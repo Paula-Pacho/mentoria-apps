@@ -355,7 +355,12 @@
         const tbody = document.getElementById('leaderboard-rows');
         tbody.innerHTML = "";
         finalRanking.forEach((res, i) => {
-            tbody.innerHTML += `<tr><td>${i+1}</td><td>${res.name}</td><td>${res.time}</td></tr>`;
+            const tr = document.createElement('tr');
+            const tdPos = document.createElement('td');   tdPos.textContent = i + 1;
+            const tdName = document.createElement('td');  tdName.textContent = res.name;
+            const tdTime = document.createElement('td');  tdTime.textContent = res.time;
+            tr.append(tdPos, tdName, tdTime);
+            tbody.appendChild(tr);
         });
     }
 </script>
