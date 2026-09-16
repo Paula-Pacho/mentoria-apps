@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gimcana Digital - micro:bitada Penedès 2026</title>
+    <style>
+        :root { --primary: #4a90e2; --secondary: #f39c12; --danger: #e74c3c; --success: #2ecc71; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #e9ecef; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 95%; max-width: 650px; text-align: center; }
+        .hidden { display: none !important; }
+        select, input { width: 90%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-main { background-color: var(--primary); color: white; }
+        .btn-start { background-color: var(--success); color: white; font-size: 1.5rem; }
+        .btn-nav { background-color: var(--dark); color: white; }
+        .btn-finish { background-color: var(--danger); color: white; width: 100%; margin-top: 10px; }
+        .btn-emergency { background-color: #f39c12; color: white; margin-bottom: 15px; width: 100%; }
+        .viewer-container { background: #000; border-radius: 10px; margin: 20px 0; overflow: hidden; min-height: 250px; display: flex; align-items: center; justify-content: center; }
+        .viewer-img { width: 100%; height: auto; display: block; }
+        .nav-buttons { display: flex; justify-content: space-between; padding: 10px; }
+        
+        .grid-5x5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 225px; margin: 15px auto; }
+        .cell { width: 40px; height: 40px; background: #eee; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; }
+        .cell.active { background: var(--secondary); box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
+        
+        .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #display-timer { font-size: 2.5rem; font-family: monospace; color: var(--danger); margin: 10px 0; }
+        #code-input { width: 80%; text-align: center; font-size: 1.5rem; }
+        .lock-footer { margin-top: 20px; width: 100%; display: flex; justify-content: flex-start; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="step-school">
+        <h2>Benvinguts i benvingudes a la micro:bitada Penedès 2026</h2>
+        <input type="text" id="school-input" list="school-options" placeholder="Escriu o tria la teva escola...">
+        <datalist id="school-options">
+            <option value="Sant Domènec de la Ràpita (Santa Margarida i els Monjos)">
+            <option value="Ull de Vent (la Bisbal del Penedès)">
+            <option value="Àngels Garriga (el Vendrell)">
+            <option value="Mare de Déu del Priorat (Banyeres)">
+            <option value="Els Quatre Vents (Sant Jaume dels Domenys)">
+            <option value="La Parellada (Santa Oliva)">
+            <option value="La Ginesta (Segur de Calafel)">
+            <option value="Subxarxa de Coordinació Alt Penedès">
+        </datalist>
+        <br><br>
+        <button class="btn-main" onclick="goToGroups()">Següent</button>
+    </div>
+
+    <div id="step-groups" class="hidden">
+        <p style="color:var(--danger); font-weight:bold;">⚠️ El nom ha de començar per l'equip (1-5)</p>
+        <h2 id="group-title">Nom del Grup</h2>
+        <input type="text" id="main-input" placeholder="Ex: 1 Els Súpers">
+        <div id="group-preview" class="hidden" style="text-align:left; background:#f8f9fa; padding:10px; margin:10px auto; width:80%;">
+            <strong>Membres:</strong> <ul id="list-members"></ul>
+        </div>
+        <div style="margin-top:15px;">
+            <button id="action-btn" class="btn-main" onclick="processLogic()">Afegir component del grup</button>
+            <button id="next-group-btn" class="hidden" style="background:var(--secondary); color:white" onclick="resetForNewGroup()">Nou Grup</button>
+        </div>
+        <button id="finalize-btn" class="btn-finish hidden" onclick="prepareToStart()">FINALITZAR CONFIGURACIÓ</button>
+    </div>
+
+    <div id="step-start" class="hidden">
+        <h2>Preparats, <span id="current-group-name"></span>?</h2>
+        <button class="btn-start" onclick="initChallenge()">START</button>
+    </div>
+
+    <div id="step-challenge" class="hidden">
+        <button class="btn-emergency" onclick="confirmEndSession()">Acaba la micro:bitada!</button>
+
+        <div id="display-timer">00:00</div>
+        
+        <div id="viewer-zone">
+            <div class="viewer-container"><img src="" id="current-img" class="viewer-img"></div>
+            
+            <div id="prog-link-zone" class="hidden" style="margin: 10px 0;">
+                <a href="https://makecode.microbit.org/S17832-99665-57486-11507" target="_blank" style="text-decoration:none;">
+                    <button class="btn-main" style="background-color: var(--secondary);">Programació</button>
+                </a>
+            </div>
+
+            <div id="navigation-zone" class="nav-buttons">
+                <button id="btn-prev" class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
+                <button id="btn-next" class="btn-nav" onclick="nav(1)">Endavant ➡</button>
+            </div>
+        </div>
+
+        <div id="lock-zone" class="lock-box hidden">
+            <h3 id="lock-title">🔒 REPTE BLOQUEJAT</h3>
+            <div id="ui-code-container">
+                <input type="text" id="code-input" placeholder="Escriu aquí...">
+                <button class="btn-main" onclick="validateLock()">VERIFICAR</button>
+            </div>
+            <div id="ui-matrix-container" class="hidden">
+                <div class="grid-5x5" id="matrix-grid"></div>
+                <button class="btn-main" onclick="validateLock()">VERIFICAR PATRÓ</button>
+            </div>
+            <div class="lock-footer">
+                <button class="btn-nav" onclick="nav(-1)">⬅ Tornar a la pista</button>
+            </div>
+        </div>
+
+        <button id="btn-finish-all" class="btn-finish hidden" onclick="endGroupSession()">🏆 ACABAR GIMCANA 🏆</button>
+    </div>
+
+    <div id="step-results" class="hidden">
+        <h2>Classificació Final</h2>
+        <table style="width:100%; border-collapse: collapse;" id="leaderboard">
+            <thead><tr style="background:#ddd"><th>Pos</th><th>Grup</th><th>Temps Total</th></tr></thead>
+            <tbody id="leaderboard-rows"></tbody>
+        </table>
+        <br><button class="btn-main" onclick="location.reload()">Nou Joc</button>
+    </div>
+</div>
+
+<script>
+    const BASE_URL = "https://raw.githubusercontent.com/aespino2-create/Microbitada-imatges/main";
+    
+    const GROUP_KEYS = {
+        "1": { c3: "245", p1: [6,12,18], word: "CORREM", c4: "1886", p2: [0,6,11,17,19,23] },
+        "2": { c3: "771", p1: [6,8,17], word: "REPTES", c4: "9867", p2: [0,4,7,12,21,23] },
+        "3": { c3: "654", p1: [12,16,18], word: "ENIGMA", c4: "1978", p2: [2,7,10,12,14,22] },
+        "4": { c3: "901", p1: [8,11,18], word: "PENSEM", c4: "5433", p2: [0,9,10,19,20,22] },
+        "5": { c3: "143", p1: [6,7,18], word: "ROBOTS", c4: "3679", p2: [0,2,4,6,8,24] }
+    };
+
+    const GAME_FLOW = [
+        { imgTrigger: 6,  type: 'code',   key: 'c4', title: "Codi de 4 xifres" },
+        { imgTrigger: 11, type: 'matrix', key: 'p1', title: "Patró 5x5 (1)" },
+        { imgTrigger: 16, type: 'code',   key: 'word', title: "Paraula de 6 lletres" },
+        { imgTrigger: 21, type: 'code',   key: 'c3', title: "Codi de 3 xifres" },
+        { imgTrigger: 27, type: 'matrix', key: 'p2', title: "Patró 5x5 Final" }
+    ];
+
+    let school = "", allGroups = [], tempGroup = { name: "", members: [] };
+    let activeGroupIdx = 0, currentImgIdx = 0, timerInterval, startTime, currentGroupNum = "1";
+    let finalRanking = [], tempsReptes = { r1: "", r2: "", r3: "", r4: "" };
+
+    const matrixGrid = document.getElementById('matrix-grid');
+    for(let i=0; i<25; i++) {
+        let cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.onclick = () => cell.classList.toggle('active');
+        matrixGrid.appendChild(cell);
+    }
+
+    function goToGroups() {
+        school = document.getElementById('school-input').value.trim();
+        if(!school) return alert("Si us plau, escriu o tria la teva escola");
+        document.getElementById('step-school').classList.add('hidden');
+        document.getElementById('step-groups').classList.remove('hidden');
+    }
+
+    function processLogic() {
+        const input = document.getElementById('main-input');
+        const val = input.value.trim();
+        if(!val) return;
+        if(!tempGroup.name) {
+            tempGroup.name = val;
+            document.getElementById('group-title').innerText = "Membres de: " + val;
+            document.getElementById('group-preview').classList.remove('hidden');
+        } else {
+            tempGroup.members.push(val);
+            let li = document.createElement('li'); li.textContent = val;
+            document.getElementById('list-members').appendChild(li);
+        }
+        input.value = "";
+        document.getElementById('next-group-btn').classList.remove('hidden');
+        document.getElementById('finalize-btn').classList.remove('hidden');
+    }
+
+    function resetForNewGroup() {
+        allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
+        tempGroup = { name: "", members: [] };
+        document.getElementById('group-title').innerText = "Nom del Grup";
+        document.getElementById('list-members').innerHTML = "";
+        document.getElementById('group-preview').classList.add('hidden');
+        document.getElementById('next-group-btn').classList.add('hidden');
+    }
+
+    function prepareToStart() {
+        if(tempGroup.name) allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
+        document.getElementById('step-groups').classList.add('hidden');
+        document.getElementById('step-start').classList.remove('hidden');
+        let gName = allGroups[activeGroupIdx].name;
+        document.getElementById('current-group-name').innerText = gName;
+        currentGroupNum = gName.charAt(0);
+        if(!GROUP_KEYS[currentGroupNum]) currentGroupNum = "1"; 
+    }
+
+    function initChallenge() {
+        document.getElementById('step-start').classList.add('hidden');
+        document.getElementById('step-challenge').classList.remove('hidden');
+        currentImgIdx = 0;
+        GAME_FLOW.forEach(f => f.passed = false);
+        tempsReptes = { r1: "", r2: "", r3: "", r4: "" };
+        updateViewer();
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        const diff = Date.now() - startTime;
+        const m = Math.floor(diff/60000).toString().padStart(2,'0');
+        const s = Math.floor((diff%60000)/1000).toString().padStart(2,'0');
+        document.getElementById('display-timer').innerText = m + ":" + s;
+    }
+
+    function updateViewer() {
+        const lock = GAME_FLOW.find(f => f.imgTrigger === currentImgIdx);
+        
+        if(lock && !lock.passed) {
+            document.getElementById('viewer-zone').classList.add('hidden');
+            document.getElementById('lock-zone').classList.remove('hidden');
+            document.getElementById('btn-finish-all').classList.add('hidden');
+            document.getElementById('lock-title').innerText = "🔒 " + lock.title;
+            
+            if(lock.type === 'matrix') {
+                document.getElementById('ui-code-container').classList.add('hidden');
+                document.getElementById('ui-matrix-container').classList.remove('hidden');
+                document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+            } else {
+                document.getElementById('ui-code-container').classList.remove('hidden');
+                document.getElementById('ui-matrix-container').classList.add('hidden');
+                document.getElementById('code-input').value = "";
+            }
+        } else {
+            document.getElementById('viewer-zone').classList.remove('hidden');
+            document.getElementById('lock-zone').classList.add('hidden');
+            
+            let realImgIdx = currentImgIdx;
+            GAME_FLOW.forEach(f => { if(currentImgIdx > f.imgTrigger) realImgIdx--; });
+            
+            const imgNum = (realImgIdx + 1).toString().padStart(2,'0');
+            document.getElementById('current-img').src = `${BASE_URL}/${imgNum}.jpg`;
+
+            document.getElementById('btn-prev').style.visibility = (currentImgIdx === 0) ? "hidden" : "visible";
+            
+            const progLinkZone = document.getElementById('prog-link-zone');
+            if(realImgIdx === 20) {
+                progLinkZone.classList.remove('hidden');
+            } else {
+                progLinkZone.classList.add('hidden');
+            }
+
+            if(realImgIdx >= 23) {
+                document.getElementById('btn-next').classList.add('hidden');
+                document.getElementById('btn-finish-all').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-next').classList.remove('hidden');
+                document.getElementById('btn-finish-all').classList.add('hidden');
+            }
+        }
+    }
+
+    function validateLock() {
+        const lock = GAME_FLOW.find(f => f.imgTrigger === currentImgIdx);
+        const keys = GROUP_KEYS[currentGroupNum];
+        let isCorrect = false;
+
+        if(lock.type === 'matrix') {
+            const selected = Array.from(document.querySelectorAll('.cell'))
+                                  .map((c, i) => c.classList.contains('active') ? i : null)
+                                  .filter(v => v !== null);
+            const target = keys[lock.key];
+            isCorrect = selected.length === target.length && selected.every(v => target.includes(v));
+        } else {
+            const input = document.getElementById('code-input').value.trim().toUpperCase();
+            isCorrect = (input === keys[lock.key]);
+        }
+
+        if(isCorrect) {
+            const tActual = document.getElementById('display-timer').innerText;
+            if (lock.key === 'c4') tempsReptes.r1 = tActual;
+            if (lock.key === 'p1') tempsReptes.r2 = tActual;
+            if (lock.key === 'word') tempsReptes.r3 = tActual;
+            if (lock.key === 'c3') tempsReptes.r4 = tActual;
+
+            lock.passed = true;
+            nav(1);
+        } else {
+            alert("Incorrecte!");
+        }
+    }
+
+    function nav(dir) {
+        currentImgIdx += dir;
+        updateViewer();
+    }
+
+    function confirmEndSession() {
+        if(confirm("Segur que vols acabar la gimcana ara? S'enviaran les dades actuals.")) {
+            endGroupSession();
+        }
+    }
+
+    function endGroupSession() {
+        clearInterval(timerInterval);
+        const timeTotal = document.getElementById('display-timer').innerText;
+        const gName = allGroups[activeGroupIdx].name;
+
+        const formURL = "https://docs.google.com/forms/d/e/1FAIpQLSdvo_g3lmgF3-olwtcpW2-ubQmXN5QC8lOazSiriLIGz1u5cQ/formResponse";
+        
+        const params = new URLSearchParams();
+        params.append('entry.1631258756', school);
+        params.append('entry.1277977719', gName);
+        params.append('entry.1028009594', timeTotal);
+        params.append('entry.1491782480', tempsReptes.r1); 
+        params.append('entry.528386202', tempsReptes.r2);
+        params.append('entry.622185759', tempsReptes.r3);
+        params.append('entry.792747908', tempsReptes.r4);
+        
+        fetch(`${formURL}?${params.toString()}`, {
+            method: 'GET',
+            mode: 'no-cors'
+        });
+
+        finalRanking.push({ name: gName, time: timeTotal, ms: Date.now() - startTime });
+        
+        activeGroupIdx++;
+        if(activeGroupIdx < allGroups.length) {
+            document.getElementById('step-challenge').classList.add('hidden');
+            document.getElementById('step-start').classList.remove('hidden');
+        } else {
+            showFinalResults();
+        }
+    }
+
+    function showFinalResults() {
+        document.getElementById('step-challenge').classList.add('hidden');
+        document.getElementById('step-results').classList.remove('hidden');
+        finalRanking.sort((a,b) => a.ms - b.ms);
+        const tbody = document.getElementById('leaderboard-rows');
+        tbody.innerHTML = "";
+        finalRanking.forEach((res, i) => {
+            tbody.innerHTML += `<tr><td>${i+1}</td><td>${res.name}</td><td>${res.time}</td></tr>`;
+        });
+    }
+</script>
+</body>
+</html>
