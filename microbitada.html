@@ -51,9 +51,10 @@
     </div>
 
     <div id="step-groups" class="hidden">
-        <p style="color:var(--danger); font-weight:bold;">⚠️ El nom ha de començar per l'equip (1-5)</p>
+        <p style="color:var(--dark); font-weight:bold;">El número d'equip s'assigna automàticament, per ordre de validació.</p>
+        <p id="max-groups-msg" class="hidden" style="color:var(--danger); font-weight:bold;">Ja s'han configurat els 5 grups màxims. Prem "FINALITZAR CONFIGURACIÓ" per continuar.</p>
         <h2 id="group-title">Nom del Grup</h2>
-        <input type="text" id="main-input" placeholder="Ex: 1 Els Súpers">
+        <input type="text" id="main-input" placeholder="Ex: Els Súpers">
         <div id="group-preview" class="hidden" style="text-align:left; background:#f8f9fa; padding:10px; margin:10px auto; width:80%;">
             <strong>Membres:</strong> <ul id="list-members"></ul>
         </div>
@@ -156,6 +157,7 @@
     }
 
     function processLogic() {
+        if (allGroups.length >= 5) return; // ja s'ha arribat al màxim de 5 grups
         const input = document.getElementById('main-input');
         const val = input.value.trim();
         if(!val) return;
@@ -180,16 +182,31 @@
         document.getElementById('list-members').innerHTML = "";
         document.getElementById('group-preview').classList.add('hidden');
         document.getElementById('next-group-btn').classList.add('hidden');
+
+        if (allGroups.length >= 5) {
+            document.getElementById('main-input').classList.add('hidden');
+            document.getElementById('action-btn').classList.add('hidden');
+            document.getElementById('max-groups-msg').classList.remove('hidden');
+        }
+    }
+
+    function groupNumberFor(idx) {
+        // El número d'equip és la posició en què s'ha validat el grup
+        // (el 1r grup validat = equip 1, el 2n = equip 2, etc.)
+        return String(idx + 1);
+    }
+
+    function setupGroupStart(idx) {
+        const gName = allGroups[idx].name;
+        document.getElementById('current-group-name').innerText = gName;
+        currentGroupNum = groupNumberFor(idx);
     }
 
     function prepareToStart() {
-        if(tempGroup.name) allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
+        if(tempGroup.name && allGroups.length < 5) allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
         document.getElementById('step-groups').classList.add('hidden');
         document.getElementById('step-start').classList.remove('hidden');
-        let gName = allGroups[activeGroupIdx].name;
-        document.getElementById('current-group-name').innerText = gName;
-        currentGroupNum = gName.charAt(0);
-        if(!GROUP_KEYS[currentGroupNum]) currentGroupNum = "1"; 
+        setupGroupStart(activeGroupIdx);
     }
 
     function initChallenge() {
@@ -325,6 +342,7 @@
         if(activeGroupIdx < allGroups.length) {
             document.getElementById('step-challenge').classList.add('hidden');
             document.getElementById('step-start').classList.remove('hidden');
+            setupGroupStart(activeGroupIdx);
         } else {
             showFinalResults();
         }
