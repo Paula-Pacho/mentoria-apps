@@ -121,6 +121,7 @@
 <script>
     const BASE_URL = "https://raw.githubusercontent.com/aespino2-create/Microbitada-imatges/main";
     const STORAGE_KEY = "microbitada_progress_v1";
+    const APPS_SCRIPT_URL = "https://script.google.com/a/macros/xtec.cat/s/AKfycbxJb0pHUdsrC6waMVTxeE8tXwZI_rsts_KVWpqf4hN3LFrZbuHx4j-KS9_ohYqktY80/exec";
     
     const GROUP_KEYS = {
         "1": { c3: "245", p1: [6,12,18], word: "CORREM", c4: "1886", p2: [0,6,11,17,19,23] },
@@ -140,7 +141,40 @@
 
     let school = "", allGroups = [], tempGroup = { name: "", members: [] };
     let activeGroupIdx = 0, currentImgIdx = 0, timerInterval, startTime, currentGroupNum = "1";
-    let finalRanking = [], tempsReptes = { r1: "", r2: "", r3: "", r4: "" };
+    let finalRanking = [], tempsReptes = ["", "", "", "", ""];
+    let groupSessionId = "";
+
+    // Envia un event al Apps Script (Content-Type: text/plain per evitar el preflight CORS).
+    // No bloqueja el joc si falla: només ho avisem quan és l'event final ("finish").
+    function sendEvent(action, extra) {
+        const body = Object.assign({
+            action,
+            sessionId: groupSessionId,
+            escola: school,
+            grup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].name : "",
+            totalReptes: GAME_FLOW.length,
+            tempsTotal: document.getElementById('display-timer').innerText
+        }, extra);
+
+        fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(body)
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.ok && action === 'finish') {
+                alert("No s'ha pogut desar el resultat final a la graella. Avisa la persona responsable (error: " + res.error + ").");
+            }
+        })
+        .catch(err => {
+            if (action === 'finish') {
+                alert("No s'ha pogut connectar per desar el resultat final. Comprova la connexió i avisa la persona responsable.");
+            } else {
+                console.error("No s'ha pogut enviar el progrés:", err);
+            }
+        });
+    }
 
     const matrixGrid = document.getElementById('matrix-grid');
     for(let i=0; i<25; i++) {
@@ -215,11 +249,13 @@
         document.getElementById('step-challenge').classList.remove('hidden');
         currentImgIdx = 0;
         GAME_FLOW.forEach(f => f.passed = false);
-        tempsReptes = { r1: "", r2: "", r3: "", r4: "" };
+        tempsReptes = ["", "", "", "", ""];
+        groupSessionId = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
         updateViewer();
         startTime = Date.now();
         clearInterval(timerInterval); // per si ja n'hi havia un en marxa (doble clic a START)
         timerInterval = setInterval(updateTimer, 1000);
+        sendEvent('progress', { retoActual: 0 });
     }
 
     function updateTimer() {
@@ -234,7 +270,7 @@
         const data = {
             school, allGroups, tempGroup, activeGroupIdx,
             currentImgIdx, currentGroupNum, startTime,
-            tempsReptes, finalRanking,
+            tempsReptes, finalRanking, groupSessionId,
             passedFlags: GAME_FLOW.map(f => !!f.passed)
         };
         try {
@@ -270,6 +306,7 @@
         startTime = saved.startTime;
         tempsReptes = saved.tempsReptes;
         finalRanking = saved.finalRanking;
+        groupSessionId = saved.groupSessionId;
         GAME_FLOW.forEach((f, i) => { f.passed = !!saved.passedFlags[i]; });
 
         document.getElementById('step-school').classList.add('hidden');
@@ -348,12 +385,11 @@
 
         if(isCorrect) {
             const tActual = document.getElementById('display-timer').innerText;
-            if (lock.key === 'c4') tempsReptes.r1 = tActual;
-            if (lock.key === 'p1') tempsReptes.r2 = tActual;
-            if (lock.key === 'word') tempsReptes.r3 = tActual;
-            if (lock.key === 'c3') tempsReptes.r4 = tActual;
+            const posicio = GAME_FLOW.indexOf(lock);
+            tempsReptes[posicio] = tActual;
 
             lock.passed = true;
+            sendEvent('progress', { retoActual: posicio + 1 });
             nav(1);
         } else {
             alert("Incorrecte!");
@@ -377,20 +413,9 @@
         const timeTotal = document.getElementById('display-timer').innerText;
         const gName = allGroups[activeGroupIdx].name;
 
-        const formURL = "https://docs.google.com/forms/d/e/1FAIpQLSdvo_g3lmgF3-olwtcpW2-ubQmXN5QC8lOazSiriLIGz1u5cQ/formResponse";
-        
-        const params = new URLSearchParams();
-        params.append('entry.1631258756', school);
-        params.append('entry.1277977719', gName);
-        params.append('entry.1028009594', timeTotal);
-        params.append('entry.1491782480', tempsReptes.r1); 
-        params.append('entry.528386202', tempsReptes.r2);
-        params.append('entry.622185759', tempsReptes.r3);
-        params.append('entry.792747908', tempsReptes.r4);
-        
-        fetch(`${formURL}?${params.toString()}`, {
-            method: 'GET',
-            mode: 'no-cors'
+        sendEvent('finish', {
+            retoActual: GAME_FLOW.filter(f => f.passed).length,
+            tempsReptes: tempsReptes
         });
 
         finalRanking.push({ name: gName, time: timeTotal, ms: Date.now() - startTime });
