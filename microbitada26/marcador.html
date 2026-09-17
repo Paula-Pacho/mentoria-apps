@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marcador en viu - micro:bitada Penedès 2026</title>
+<style>
+    :root { --primary: #4a90e2; --secondary: #f39c12; --danger: #e74c3c; --success: #2ecc71; --dark: #2c3e50; }
+    .hidden { display: none !important; }
+    body { font-family: 'Segoe UI', sans-serif; background:#e9ecef; margin:0; padding: 2rem; }
+    h1 { text-align:center; color: var(--dark); }
+    .filtre { max-width: 500px; margin: 0 auto 2rem; text-align:center; }
+    .filtre input { width: 60%; padding: 10px; border-radius:8px; border:2px solid #ddd; font-size:1rem; }
+    .filtre button { padding:10px 18px; border:none; border-radius:8px; background:var(--primary); color:white; font-weight:bold; cursor:pointer; margin-left: .5rem; }
+    .graella { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:1rem; max-width:1200px; margin:0 auto; }
+    .targeta { background:white; border-radius:12px; padding:1.2rem; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+    .targeta.acabat { opacity:0.6; }
+    .targeta h3 { margin:0 0 .5rem; color:var(--dark); }
+    .barra-fons { background:#eee; border-radius:8px; height:18px; overflow:hidden; margin:.5rem 0; }
+    .barra { background:var(--success); height:100%; transition: width .4s; }
+    .meta { display:flex; justify-content:space-between; font-size:.9rem; color:#666; }
+    .buit { text-align:center; color:#888; margin-top:3rem; }
+    .estat-final { color: var(--primary); font-weight:bold; }
+</style>
+</head>
+<body>
+
+<h1>🤖 Marcador en viu — micro:bitada</h1>
+
+<div class="filtre">
+    <input type="text" id="escola-input" placeholder="Escriu el nom de l'escola...">
+    <button onclick="carregarAra()">Mostrar</button>
+</div>
+
+<div id="graella" class="graella"></div>
+<p id="missatge-buit" class="buit hidden"></p>
+
+<script>
+    const APPS_SCRIPT_URL = "https://script.google.com/a/macros/xtec.cat/s/AKfycbxJb0pHUdsrC6waMVTxeE8tXwZI_rsts_KVWpqf4hN3LFrZbuHx4j-KS9_ohYqktY80/exec";
+    const INTERVAL_MS = 6000;
+    const HORES_CADUCITAT = 4; // ignorem files més antigues que aquestes hores (sessions abandonades)
+
+    const params = new URLSearchParams(location.search);
+    const inputEscola = document.getElementById('escola-input');
+    if (params.get('escola')) inputEscola.value = params.get('escola');
+
+    function carregarAra() {
+        // Deixem l'escola a la URL perquè es pugui desar com a preferit per aula/dispositiu
+        const nova = new URL(location.href);
+        if (inputEscola.value.trim()) nova.searchParams.set('escola', inputEscola.value.trim());
+        else nova.searchParams.delete('escola');
+        history.replaceState(null, '', nova);
+        actualitza();
+    }
+
+    async function actualitza() {
+        const escolaFiltre = inputEscola.value.trim().toLowerCase();
+        const graella = document.getElementById('graella');
+        const missatgeBuit = document.getElementById('missatge-buit');
+
+        if (!escolaFiltre) {
+            graella.innerHTML = "";
+            missatgeBuit.textContent = "Escriu el nom de l'escola i prem \"Mostrar\".";
+            missatgeBuit.classList.remove('hidden');
+            return;
+        }
+
+        let dades;
+        try {
+            const resp = await fetch(APPS_SCRIPT_URL, { cache: 'no-store' });
+            dades = await resp.json();
+        } catch (e) {
+            console.error("No s'han pogut carregar les dades:", e);
+            return; // deixem el que hi hagués en pantalla; ho reintentarem al proper cicle
+        }
+        if (!dades.ok) return;
+
+        const araMs = Date.now();
+        const grups = dades.grups.filter(g => {
+            if ((g.escola || '').trim().toLowerCase() !== escolaFiltre) return false;
+            const actMs = new Date(g.actualitzat).getTime();
+            if (isNaN(actMs)) return true;
+            return (araMs - actMs) < HORES_CADUCITAT * 3600 * 1000;
+        });
+
+        grups.sort((a, b) => (b.retoActual || 0) - (a.retoActual || 0));
+
+        graella.innerHTML = "";
+
+        if (grups.length === 0) {
+            missatgeBuit.textContent = "Encara no hi ha cap grup jugant d'aquesta escola.";
+            missatgeBuit.classList.remove('hidden');
+            return;
+        }
+        missatgeBuit.classList.add('hidden');
+
+        grups.forEach(g => {
+            const total = g.totalReptes || 5;
+            const actual = g.retoActual || 0;
+            const pct = Math.max(0, Math.min(100, Math.round((actual / total) * 100)));
+            const acabat = g.estat === 'Acabat';
+
+            const targeta = document.createElement('div');
+            targeta.className = 'targeta' + (acabat ? ' acabat' : '');
+
+            const h3 = document.createElement('h3');
+            h3.textContent = g.grup;
+            targeta.appendChild(h3);
+
+            const barraFons = document.createElement('div');
+            barraFons.className = 'barra-fons';
+            const barra = document.createElement('div');
+            barra.className = 'barra';
+            barra.style.width = pct + '%';
+            barraFons.appendChild(barra);
+            targeta.appendChild(barraFons);
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const spanReptes = document.createElement('span');
+            spanReptes.textContent = acabat ? 'Acabat 🏆' : `Repte ${actual} de ${total}`;
+            if (acabat) spanReptes.className = 'estat-final';
+            const spanTemps = document.createElement('span');
+            spanTemps.textContent = g.tempsTotal || '';
+            meta.appendChild(spanReptes);
+            meta.appendChild(spanTemps);
+            targeta.appendChild(meta);
+
+            graella.appendChild(targeta);
+        });
+    }
+
+    carregarAra();
+    setInterval(actualitza, INTERVAL_MS);
+</script>
+</body>
+</html>
