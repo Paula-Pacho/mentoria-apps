@@ -21,8 +21,9 @@
         .nav-buttons { display: flex; justify-content: space-between; padding: 10px; }
         
         .grid-5x5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 225px; margin: 15px auto; }
-        .cell { width: 40px; height: 40px; background: #eee; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; }
+        .cell { width: 40px; height: 40px; background: #eee; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; padding: 0; font: inherit; }
         .cell.active { background: var(--secondary); box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
+        .cell:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
         
         .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #display-timer { font-size: 2.5rem; font-family: monospace; color: var(--danger); margin: 10px 0; }
@@ -97,7 +98,7 @@
                 <button class="btn-main" onclick="validateLock()">VERIFICAR</button>
             </div>
             <div id="ui-matrix-container" class="hidden">
-                <div class="grid-5x5" id="matrix-grid"></div>
+                <div class="grid-5x5" id="matrix-grid" role="group" aria-label="Quadrícula de patró 5x5. Activa les caselles per reproduir el patró."></div>
                 <button class="btn-main" onclick="validateLock()">VERIFICAR PATRÓ</button>
             </div>
             <div class="lock-footer">
@@ -187,9 +188,14 @@
 
     const matrixGrid = document.getElementById('matrix-grid');
     for(let i=0; i<25; i++) {
-        let cell = document.createElement('div');
+        let cell = document.createElement('button');
+        cell.type = 'button';
         cell.className = 'cell';
-        cell.onclick = () => cell.classList.toggle('active');
+        cell.setAttribute('aria-pressed', 'false');
+        cell.onclick = () => {
+            const araActiva = cell.classList.toggle('active');
+            cell.setAttribute('aria-pressed', String(araActiva));
+        };
         matrixGrid.appendChild(cell);
     }
 
@@ -341,7 +347,7 @@
             if(lock.type === 'matrix') {
                 document.getElementById('ui-code-container').classList.add('hidden');
                 document.getElementById('ui-matrix-container').classList.remove('hidden');
-                document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+                document.querySelectorAll('.cell').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
             } else {
                 document.getElementById('ui-code-container').classList.remove('hidden');
                 document.getElementById('ui-matrix-container').classList.add('hidden');
