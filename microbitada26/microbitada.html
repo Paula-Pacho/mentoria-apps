@@ -169,8 +169,11 @@
         fetch(`${APPS_SCRIPT_URL}?${params.toString()}`)
         .then(r => r.json())
         .then(res => {
-            if (!res.ok && action === 'finish') {
-                alert("No s'ha pogut desar el resultat final a la graella. Avisa la persona responsable (error: " + res.error + ").");
+            if (!res.ok) {
+                console.error(`Event '${action}' rebutjat pel servidor:`, res.error);
+                if (action === 'finish') {
+                    alert("No s'ha pogut desar el resultat final a la graella. Avisa la persona responsable (error: " + res.error + ").");
+                }
             }
         })
         .catch(err => {
