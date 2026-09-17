@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gimcana Digital - micro:bitada Penedès 2026</title>
     <style>
-        :root { --primary: #4a90e2; --secondary: #f39c12; --danger: #e74c3c; --success: #2ecc71; --dark: #2c3e50; }
+        :root { --primary: #2275d7; --secondary: #f39c12; --danger: #df2e1b; --success: #2ecc71; --dark: #2c3e50; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #e9ecef; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 95%; max-width: 650px; text-align: center; }
         .hidden { display: none !important; }
@@ -13,10 +13,10 @@
         select, input { width: 90%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; }
         button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn-main { background-color: var(--primary); color: white; }
-        .btn-start { background-color: var(--success); color: white; font-size: 1.5rem; }
+        .btn-start { background-color: var(--success); color: var(--dark); font-size: 1.5rem; }
         .btn-nav { background-color: var(--dark); color: white; }
         .btn-finish { background-color: var(--danger); color: white; width: 100%; margin-top: 10px; }
-        .btn-emergency { background-color: #f39c12; color: white; margin-bottom: 15px; width: 100%; }
+        .btn-emergency { background-color: #f39c12; color: var(--dark); margin-bottom: 15px; width: 100%; }
         .viewer-container { background: #000; border-radius: 10px; margin: 20px 0; overflow: hidden; min-height: 250px; display: flex; align-items: center; justify-content: center; }
         .viewer-img { width: 100%; height: auto; display: block; }
         .nav-buttons { display: flex; justify-content: space-between; padding: 10px; }
@@ -77,7 +77,7 @@
         </div>
         <div style="margin-top:15px;">
             <button id="action-btn" class="btn-main" onclick="processLogic()">Afegir component del grup</button>
-            <button id="next-group-btn" class="hidden" style="background:var(--secondary); color:white" onclick="resetForNewGroup()">Nou Grup</button>
+            <button id="next-group-btn" class="hidden" style="background:var(--secondary); color:var(--dark)" onclick="resetForNewGroup()">Nou Grup</button>
         </div>
         <button id="finalize-btn" class="btn-finish hidden" onclick="prepareToStart()">FINALITZAR CONFIGURACIÓ</button>
     </div>
@@ -97,7 +97,7 @@
             
             <div id="prog-link-zone" class="hidden" style="margin: 10px 0;">
                 <a href="https://makecode.microbit.org/S17832-99665-57486-11507" target="_blank" style="text-decoration:none;">
-                    <button class="btn-main" style="background-color: var(--secondary);">Programació</button>
+                    <button class="btn-main" style="background-color: var(--secondary); color: var(--dark);">Programació</button>
                 </a>
             </div>
 
