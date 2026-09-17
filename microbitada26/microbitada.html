@@ -95,12 +95,6 @@
         <div id="viewer-zone">
             <div class="viewer-container"><button type="button" id="img-zoom-btn" class="img-zoom-btn" aria-label="Amplia la imatge a pantalla completa"><img src="" id="current-img" class="viewer-img"></button></div>
             
-            <div id="prog-link-zone" class="hidden" style="margin: 10px 0;">
-                <a href="https://makecode.microbit.org/S17832-99665-57486-11507" target="_blank" style="text-decoration:none;">
-                    <button class="btn-main" style="background-color: var(--secondary); color: var(--dark);">Programació</button>
-                </a>
-            </div>
-
             <div id="navigation-zone" class="nav-buttons">
                 <button id="btn-prev" class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
                 <button id="btn-next" class="btn-nav" onclick="nav(1)">Endavant ➡</button>
@@ -410,13 +404,6 @@
             document.getElementById('current-img').src = `${BASE_URL}/${imgNum}.jpg`;
 
             document.getElementById('btn-prev').style.visibility = (currentImgIdx === 0) ? "hidden" : "visible";
-            
-            const progLinkZone = document.getElementById('prog-link-zone');
-            if(realImgIdx === 20) {
-                progLinkZone.classList.remove('hidden');
-            } else {
-                progLinkZone.classList.add('hidden');
-            }
 
             if(realImgIdx >= 23) {
                 document.getElementById('btn-next').classList.add('hidden');
