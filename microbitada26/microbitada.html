@@ -217,6 +217,7 @@
         tempsReptes = { r1: "", r2: "", r3: "", r4: "" };
         updateViewer();
         startTime = Date.now();
+        clearInterval(timerInterval); // per si ja n'hi havia un en marxa (doble clic a START)
         timerInterval = setInterval(updateTimer, 1000);
     }
 
