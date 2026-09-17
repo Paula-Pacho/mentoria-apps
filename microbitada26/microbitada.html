@@ -24,6 +24,12 @@
         .cell { width: 40px; height: 40px; background: #eee; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; padding: 0; font: inherit; }
         .cell.active { background: var(--secondary); box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
         .cell:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
+
+        /* En pantalles més grans (tauletes, portàtils, projector) deixem créixer el contenidor
+           perquè la imatge de cada pista (que ja escala amb width:100%) es pugui veure més gran. */
+        @media (min-width: 900px) {
+            .container { max-width: 900px; }
+        }
         
         .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #display-timer { font-size: 2.5rem; font-family: monospace; color: var(--danger); margin: 10px 0; }
