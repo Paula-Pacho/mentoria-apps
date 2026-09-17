@@ -306,7 +306,7 @@
     }
 
     function nav(dir) {
-        currentImgIdx += dir;
+        currentImgIdx = Math.max(0, currentImgIdx + dir);
         updateViewer();
     }
 
