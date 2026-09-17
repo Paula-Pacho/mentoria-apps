@@ -136,7 +136,7 @@
 </div>
 
 <script>
-    const BASE_URL = "https://raw.githubusercontent.com/aespino2-create/Microbitada-imatges/main";
+    const BASE_URL = "https://raw.githubusercontent.com/Paula-Pacho/mentoria-apps/main/microbitada26/imatges";
     const STORAGE_KEY = "microbitada_progress_v1";
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJb0pHUdsrC6waMVTxeE8tXwZI_rsts_KVWpqf4hN3LFrZbuHx4j-KS9_ohYqktY80/exec";
     
@@ -148,13 +148,27 @@
         "5": { c3: "143", p1: [6,7,18], word: "ROBOTS", c4: "3679", p2: [0,2,4,6,8,24] }
     };
 
-    const GAME_FLOW = [
-        { imgTrigger: 6,  type: 'code',   key: 'c4', title: "Codi de 4 xifres" },
-        { imgTrigger: 11, type: 'matrix', key: 'p1', title: "Patró 5x5 (1)" },
-        { imgTrigger: 16, type: 'code',   key: 'word', title: "Paraula de 6 lletres" },
-        { imgTrigger: 21, type: 'code',   key: 'c3', title: "Codi de 3 xifres" },
-        { imgTrigger: 27, type: 'matrix', key: 'p2', title: "Patró 5x5 Final" }
+    // Nombre total d'imatges de la seqüència (portada + resum + abans de
+    // començar + les imatges de cada repte + les 2 imatges finals).
+    const TOTAL_IMAGES = 21;
+
+    // Quantes imatges reals s'han vist ABANS que aparegui cada candado,
+    // comptant totes des de la imatge 1. Per canviar quantes imatges té
+    // un repte, només cal editar aquest número — la resta es calcula sol,
+    // no cal tocar res més.
+    const IMAGES_BEFORE_LOCK = [6, 9, 12, 15, 19]; // repte 1..5
+
+    const LOCK_DEFS = [
+        { type: 'code',   key: 'c4',   title: "Codi de 4 xifres" },
+        { type: 'matrix', key: 'p1',   title: "Patró 5x5 (1)" },
+        { type: 'code',   key: 'word', title: "Paraula de 6 lletres" },
+        { type: 'code',   key: 'c3',   title: "Codi de 3 xifres" },
+        { type: 'matrix', key: 'p2',   title: "Patró 5x5 Final" }
     ];
+
+    // imgTrigger = posició real de navegació del candado: cal sumar-hi l'índex
+    // (0..4) perquè cada candado anterior ja ha "ocupat" un pas de navegació.
+    const GAME_FLOW = IMAGES_BEFORE_LOCK.map((n, i) => Object.assign({ imgTrigger: n + i }, LOCK_DEFS[i]));
 
     let school = "", allGroups = [], tempGroup = { name: "", members: [] };
     let activeGroupIdx = 0, currentImgIdx = 0, timerInterval, startTime, currentGroupNum = "1";
@@ -405,7 +419,7 @@
 
             document.getElementById('btn-prev').style.visibility = (currentImgIdx === 0) ? "hidden" : "visible";
 
-            if(realImgIdx >= 23) {
+            if(realImgIdx >= TOTAL_IMAGES - 1) {
                 document.getElementById('btn-next').classList.add('hidden');
                 document.getElementById('btn-finish-all').classList.remove('hidden');
             } else {
