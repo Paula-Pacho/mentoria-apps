@@ -120,6 +120,7 @@
 
 <script>
     const BASE_URL = "https://raw.githubusercontent.com/aespino2-create/Microbitada-imatges/main";
+    const STORAGE_KEY = "microbitada_progress_v1";
     
     const GROUP_KEYS = {
         "1": { c3: "245", p1: [6,12,18], word: "CORREM", c4: "1886", p2: [0,6,11,17,19,23] },
@@ -226,6 +227,60 @@
         const m = Math.floor(diff/60000).toString().padStart(2,'0');
         const s = Math.floor((diff%60000)/1000).toString().padStart(2,'0');
         document.getElementById('display-timer').innerText = m + ":" + s;
+        saveProgress();
+    }
+
+    function saveProgress() {
+        const data = {
+            school, allGroups, tempGroup, activeGroupIdx,
+            currentImgIdx, currentGroupNum, startTime,
+            tempsReptes, finalRanking,
+            passedFlags: GAME_FLOW.map(f => !!f.passed)
+        };
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {
+            // localStorage pot no estar disponible (mode privat, etc.); ho ignorem
+        }
+    }
+
+    function clearProgress() {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+
+    function tryRestoreProgress() {
+        let raw;
+        try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { return; }
+        if (!raw) return;
+
+        let saved;
+        try { saved = JSON.parse(raw); } catch (e) { clearProgress(); return; }
+
+        if (!confirm("S'ha trobat un repte sense acabar. Vols continuar-lo?")) {
+            clearProgress();
+            return;
+        }
+
+        school = saved.school;
+        allGroups = saved.allGroups;
+        tempGroup = saved.tempGroup;
+        activeGroupIdx = saved.activeGroupIdx;
+        currentImgIdx = saved.currentImgIdx;
+        currentGroupNum = saved.currentGroupNum;
+        startTime = saved.startTime;
+        tempsReptes = saved.tempsReptes;
+        finalRanking = saved.finalRanking;
+        GAME_FLOW.forEach((f, i) => { f.passed = !!saved.passedFlags[i]; });
+
+        document.getElementById('step-school').classList.add('hidden');
+        document.getElementById('step-groups').classList.add('hidden');
+        document.getElementById('step-start').classList.add('hidden');
+        document.getElementById('step-challenge').classList.remove('hidden');
+
+        updateViewer();
+        clearInterval(timerInterval);
+        timerInterval = setInterval(updateTimer, 1000);
+        updateTimer();
     }
 
     function updateViewer() {
@@ -318,6 +373,7 @@
 
     function endGroupSession() {
         clearInterval(timerInterval);
+        clearProgress();
         const timeTotal = document.getElementById('display-timer').innerText;
         const gName = allGroups[activeGroupIdx].name;
 
@@ -364,6 +420,8 @@
             tbody.appendChild(tr);
         });
     }
+
+    tryRestoreProgress();
 </script>
 </body>
 </html>
