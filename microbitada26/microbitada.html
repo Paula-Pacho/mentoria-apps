@@ -30,6 +30,13 @@
         @media (min-width: 900px) {
             .container { max-width: 900px; }
         }
+
+        .img-zoom-btn { background: none; border: none; padding: 0; margin: 0; display: block; width: 100%; cursor: zoom-in; }
+        .img-zoom-btn:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
+        .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
+        .lightbox img { max-width: 95vw; max-height: 90vh; object-fit: contain; display: block; }
+        .lightbox-close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: 50%; border: none; background: white; color: var(--dark); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+        .lightbox-close:focus-visible { outline: 3px solid var(--secondary); outline-offset: 2px; }
         
         .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #display-timer { font-size: 2.5rem; font-family: monospace; color: var(--danger); margin: 10px 0; }
@@ -83,7 +90,7 @@
         <div id="display-timer">00:00</div>
         
         <div id="viewer-zone">
-            <div class="viewer-container"><img src="" id="current-img" class="viewer-img"></div>
+            <div class="viewer-container"><button type="button" id="img-zoom-btn" class="img-zoom-btn" aria-label="Amplia la imatge a pantalla completa"><img src="" id="current-img" class="viewer-img"></button></div>
             
             <div id="prog-link-zone" class="hidden" style="margin: 10px 0;">
                 <a href="https://makecode.microbit.org/S17832-99665-57486-11507" target="_blank" style="text-decoration:none;">
@@ -123,6 +130,11 @@
         </table>
         <br><button class="btn-main" onclick="location.reload()">Nou Joc</button>
     </div>
+</div>
+
+<div id="img-lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Imatge ampliada">
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Tanca la imatge ampliada">✕</button>
+    <img id="lightbox-img" src="" alt="">
 </div>
 
 <script>
@@ -191,6 +203,30 @@
             }
         });
     }
+
+    const imgZoomBtn = document.getElementById('img-zoom-btn');
+    const lightbox = document.getElementById('img-lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxClose = document.getElementById('lightbox-close');
+
+    function tancaLightboxAmbEsc(e) {
+        if (e.key === 'Escape') tancarLightbox();
+    }
+    function obrirLightbox() {
+        lightboxImg.src = document.getElementById('current-img').src;
+        lightbox.classList.remove('hidden');
+        lightboxClose.focus();
+        document.addEventListener('keydown', tancaLightboxAmbEsc);
+    }
+    function tancarLightbox() {
+        lightbox.classList.add('hidden');
+        lightboxImg.src = "";
+        document.removeEventListener('keydown', tancaLightboxAmbEsc);
+        imgZoomBtn.focus();
+    }
+    imgZoomBtn.addEventListener('click', obrirLightbox);
+    lightboxClose.addEventListener('click', tancarLightbox);
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) tancarLightbox(); });
 
     const matrixGrid = document.getElementById('matrix-grid');
     for(let i=0; i<25; i++) {
