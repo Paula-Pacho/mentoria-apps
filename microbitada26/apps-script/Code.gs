@@ -20,18 +20,43 @@
 const SHEET_RESPOSTES = "Respostes al formulari 1"; // nom exacte de la pestanya on cauen les respostes del Form actual
 const SHEET_ESTAT = "Estat en viu";
 
+// GET amb ?action=progress|finish : el joc avisa d'un canvi d'estat.
+// GET sense "action" : el marcador demana l'estat actual de tots els grups.
+// (Fem servir GET per a tot, també per als events del joc, perquè els POST a un
+// Apps Script Web App no sempre porten la capçalera CORS que el navegador exigeix
+// per poder-ne llegir la resposta, encara que el POST s'executi bé al servidor.)
+function doGet(e) {
+  const params = e.parameter;
+  if (params.action === "progress" || params.action === "finish") {
+    return gestionarEvent(params);
+  }
+  return llegirEstat();
+}
+
+// Es manté per compatibilitat, encara que el joc ja no l'utilitza.
 function doPost(e) {
   try {
-    const body = JSON.parse(e.postData.contents);
-    const action = body.action;
+    return gestionarEvent(JSON.parse(e.postData.contents));
+  } catch (err) {
+    return respondreJSON({ ok: false, error: String(err) });
+  }
+}
 
-    if (action === "progress") {
-      registrarProgres(body);
-    } else if (action === "finish") {
-      registrarProgres(Object.assign({}, body, { estat: "Acabat" }));
-      registrarRespostaFinal(body);
+function gestionarEvent(dadesOriginals) {
+  try {
+    const dades = Object.assign({}, dadesOriginals, {
+      tempsReptes: typeof dadesOriginals.tempsReptes === "string"
+        ? dadesOriginals.tempsReptes.split(",")
+        : (dadesOriginals.tempsReptes || [])
+    });
+
+    if (dades.action === "progress") {
+      registrarProgres(dades);
+    } else if (dades.action === "finish") {
+      registrarProgres(Object.assign({}, dades, { estat: "Acabat" }));
+      registrarRespostaFinal(dades);
     } else {
-      return respondreJSON({ ok: false, error: "acció desconeguda: " + action });
+      return respondreJSON({ ok: false, error: "acció desconeguda: " + dades.action });
     }
     return respondreJSON({ ok: true });
   } catch (err) {
@@ -39,7 +64,7 @@ function doPost(e) {
   }
 }
 
-function doGet(e) {
+function llegirEstat() {
   const sheet = obtenirOCrearFullEstat();
   const valors = sheet.getDataRange().getValues();
   const capçaleres = valors.shift();

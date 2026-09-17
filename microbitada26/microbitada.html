@@ -147,7 +147,7 @@
     // Envia un event al Apps Script (Content-Type: text/plain per evitar el preflight CORS).
     // No bloqueja el joc si falla: només ho avisem quan és l'event final ("finish").
     function sendEvent(action, extra) {
-        const body = Object.assign({
+        const cos = Object.assign({
             action,
             sessionId: groupSessionId,
             escola: school,
@@ -156,11 +156,17 @@
             tempsTotal: document.getElementById('display-timer').innerText
         }, extra);
 
-        fetch(APPS_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(body)
-        })
+        // tempsReptes és un array; el codifiquem com a text separat per comes per poder-lo enviar per URL
+        if (Array.isArray(cos.tempsReptes)) {
+            cos.tempsReptes = cos.tempsReptes.join(',');
+        }
+
+        // GET en lloc de POST: Apps Script no sempre retorna la capçalera CORS necessària
+        // perquè el navegador ens deixi llegir la resposta d'un POST, encara que el POST
+        // s'executi correctament. Amb GET (com ja fa marcador.html) no passa.
+        const params = new URLSearchParams(cos);
+
+        fetch(`${APPS_SCRIPT_URL}?${params.toString()}`)
         .then(r => r.json())
         .then(res => {
             if (!res.ok && action === 'finish') {
