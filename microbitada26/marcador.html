@@ -94,6 +94,13 @@
         }
         missatgeBuit.classList.add('hidden');
 
+        // El Sheet a vegades interpreta "mm:ss" com una hora real i el fa malbé
+        // (surt com "1899-12-30T...Z"). Si no sembla un "mm:ss" vàlid, no el mostrem.
+        function formatTemps(valor) {
+            if (typeof valor === 'string' && /^\d{1,3}:\d{2}$/.test(valor)) return valor;
+            return '';
+        }
+
         grups.forEach(g => {
             const total = g.totalReptes || 5;
             const actual = g.retoActual || 0;
@@ -121,7 +128,7 @@
             spanReptes.textContent = acabat ? 'Acabat 🏆' : `Repte ${actual} de ${total}`;
             if (acabat) spanReptes.className = 'estat-final';
             const spanTemps = document.createElement('span');
-            spanTemps.textContent = g.tempsTotal || '';
+            spanTemps.textContent = formatTemps(g.tempsTotal);
             meta.appendChild(spanReptes);
             meta.appendChild(spanTemps);
             targeta.appendChild(meta);

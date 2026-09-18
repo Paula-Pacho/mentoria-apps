@@ -91,6 +91,10 @@ function obtenirOCrearFullEstat() {
     // Compatibilitat amb fulls "Estat en viu" creats abans d'afegir aquesta columna
     sheet.getRange(1, 9).setValue("numGrup");
   }
+  // tempsTotal (columna F) és un text "mm:ss" de temps transcorregut, no una
+  // hora real. Sense forçar format de text, el Sheet l'interpreta com a hora
+  // i el fa malbé (surt com "1899-12-30T...Z" en llegir-lo per JSON).
+  sheet.getRange("F:F").setNumberFormat("@");
   return sheet;
 }
 
@@ -141,6 +145,9 @@ function registrarRespostaFinal(body) {
   if (sheet.getRange(1, 10).getValue() !== "Número de grup") {
     sheet.getRange(1, 10).setValue("Número de grup");
   }
+  // Mateix motiu que a "Estat en viu": Temps i Temps repte 1-5 (columnes D-I)
+  // són text "mm:ss", no hores reals.
+  sheet.getRange("D:I").setNumberFormat("@");
 
   const tr = body.tempsReptes || [];
   sheet.appendRow([
