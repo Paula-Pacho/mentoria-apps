@@ -67,9 +67,20 @@
     </div>
 
     <div id="step-groups" class="hidden">
-        <p style="color:var(--dark); font-weight:bold;">El número d'equip s'assigna automàticament, per ordre de validació.</p>
+        <p style="color:var(--dark); font-weight:bold;">El/la docent us indicarà el número de grup (1-5) segons el material que us hagi repartit.</p>
         <p id="max-groups-msg" class="hidden" style="color:var(--danger); font-weight:bold;">Ja s'han configurat els 5 grups màxims. Prem "FINALITZAR CONFIGURACIÓ" per continuar.</p>
         <h2 id="group-title">Nom del Grup</h2>
+        <div id="group-number-zone">
+            <label for="group-number-select">Número de grup (el que us ha indicat el/la docent)</label>
+            <select id="group-number-select">
+                <option value="" selected disabled>Selecciona el número...</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+            </select>
+        </div>
         <label for="main-input" class="sr-only">Nom de l'equip, o d'un membre del grup</label>
         <input type="text" id="main-input" placeholder="Ex: Els Súpers">
         <div id="group-preview" class="hidden" style="text-align:left; background:#f8f9fa; padding:10px; margin:10px auto; width:80%;">
@@ -183,6 +194,7 @@
             sessionId: groupSessionId,
             escola: school,
             grup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].name : "",
+            numGrup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].number : "",
             totalReptes: GAME_FLOW.length,
             tempsTotal: document.getElementById('display-timer').innerText
         }, extra);
@@ -266,9 +278,16 @@
         const val = input.value.trim();
         if(!val) return;
         if(!tempGroup.name) {
+            const numeroSelect = document.getElementById('group-number-select');
+            if (!numeroSelect.value) {
+                alert("Selecciona el número de grup abans de continuar.");
+                return;
+            }
+            tempGroup.number = numeroSelect.value;
             tempGroup.name = val;
             document.getElementById('group-title').innerText = "Membres de: " + val;
             document.getElementById('group-preview').classList.remove('hidden');
+            document.getElementById('group-number-zone').classList.add('hidden');
         } else {
             tempGroup.members.push(val);
             let li = document.createElement('li'); li.textContent = val;
@@ -286,6 +305,8 @@
         document.getElementById('list-members').innerHTML = "";
         document.getElementById('group-preview').classList.add('hidden');
         document.getElementById('next-group-btn').classList.add('hidden');
+        document.getElementById('group-number-select').value = "";
+        document.getElementById('group-number-zone').classList.remove('hidden');
 
         if (allGroups.length >= 5) {
             document.getElementById('main-input').classList.add('hidden');
@@ -294,16 +315,13 @@
         }
     }
 
-    function groupNumberFor(idx) {
-        // El número d'equip és la posició en què s'ha validat el grup
-        // (el 1r grup validat = equip 1, el 2n = equip 2, etc.)
-        return String(idx + 1);
-    }
-
     function setupGroupStart(idx) {
         const gName = allGroups[idx].name;
         document.getElementById('current-group-name').innerText = gName;
-        currentGroupNum = groupNumberFor(idx);
+        // El número de grup ja no s'assigna per ordre de validació: el tria
+        // manualment el/la docent en desplegable (veure processLogic), perquè
+        // cada dispositiu s'assigna a un grup concret amb el seu propi material.
+        currentGroupNum = allGroups[idx].number;
     }
 
     function prepareToStart() {
