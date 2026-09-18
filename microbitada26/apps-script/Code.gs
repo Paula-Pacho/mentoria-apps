@@ -86,7 +86,10 @@ function obtenirOCrearFullEstat() {
   let sheet = ss.getSheetByName(SHEET_ESTAT);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_ESTAT);
-    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat"]);
+    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat", "numGrup"]);
+  } else if (sheet.getRange(1, 9).getValue() !== "numGrup") {
+    // Compatibilitat amb fulls "Estat en viu" creats abans d'afegir aquesta columna
+    sheet.getRange(1, 9).setValue("numGrup");
   }
   return sheet;
 }
@@ -111,7 +114,8 @@ function registrarProgres(body) {
     body.totalReptes,
     body.tempsTotal,
     body.estat || "en joc",
-    new Date()
+    new Date(),
+    body.numGrup || ""
   ];
   if (indexFila === -1) {
     sheet.appendRow(valorsFila);
@@ -130,9 +134,12 @@ function registrarRespostaFinal(body) {
   const sheet = ss.getSheetByName(SHEET_RESPOSTES);
   if (!sheet) return;
 
-  // Assegura que existeix la capçalera "Temps repte 5" (per compatibilitat amb l'historial existent, que només arriba a 4)
+  // Assegura que existeixen les capçaleres afegides amb el temps (compatibilitat amb l'historial existent)
   if (sheet.getRange(1, 9).getValue() !== "Temps repte 5") {
     sheet.getRange(1, 9).setValue("Temps repte 5");
+  }
+  if (sheet.getRange(1, 10).getValue() !== "Número de grup") {
+    sheet.getRange(1, 10).setValue("Número de grup");
   }
 
   const tr = body.tempsReptes || [];
@@ -145,6 +152,7 @@ function registrarRespostaFinal(body) {
     tr[1] || "",
     tr[2] || "",
     tr[3] || "",
-    tr[4] || ""
+    tr[4] || "",
+    body.numGrup || ""
   ]);
 }
