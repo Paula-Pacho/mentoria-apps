@@ -15,7 +15,9 @@
     .graella { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:1rem; max-width:1200px; margin:0 auto; }
     .targeta { background:white; border-radius:12px; padding:1.2rem; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
     .targeta.acabat { opacity:0.6; }
-    .targeta h3 { margin:0 0 .5rem; color:var(--dark); }
+    .targeta-header { display:flex; align-items:center; gap:.6rem; margin-bottom:.5rem; }
+    .num-badge { flex-shrink:0; display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:var(--primary); color:white; font-weight:bold; font-size:.9rem; }
+    .targeta h3 { margin:0; color:var(--dark); }
     .barra-fons { background:#eee; border-radius:8px; height:18px; overflow:hidden; margin:.5rem 0; }
     .barra { background:var(--success); height:100%; transition: width .4s; }
     .meta { display:flex; justify-content:space-between; font-size:.9rem; color:#666; }
@@ -110,9 +112,22 @@
             const targeta = document.createElement('div');
             targeta.className = 'targeta' + (acabat ? ' acabat' : '');
 
+            const header = document.createElement('div');
+            header.className = 'targeta-header';
+
+            if (g.numGrup) {
+                const badge = document.createElement('span');
+                badge.className = 'num-badge';
+                badge.setAttribute('aria-hidden', 'true'); // el número ja surt en text a l'h3
+                badge.textContent = g.numGrup;
+                header.appendChild(badge);
+            }
+
             const h3 = document.createElement('h3');
-            h3.textContent = g.grup;
-            targeta.appendChild(h3);
+            h3.textContent = (g.numGrup ? `Grup ${g.numGrup} — ` : '') + g.grup;
+            header.appendChild(h3);
+
+            targeta.appendChild(header);
 
             const barraFons = document.createElement('div');
             barraFons.className = 'barra-fons';
