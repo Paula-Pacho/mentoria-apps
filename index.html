@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>micro:bitada Penedès 2026</title>
+<style>
+    :root { --primary: #2275d7; --secondary: #f39c12; --danger: #df2e1b; --success: #2ecc71; --dark: #2c3e50; }
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background-color: #e9ecef;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    .container {
+        background: white;
+        padding: 2.5rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 480px;
+        text-align: center;
+    }
+    .emoji { font-size: 2.5rem; margin-bottom: .25rem; }
+    h1 { color: var(--dark); margin: 0 0 .25rem; font-size: 1.6rem; }
+    p.subtitle { color: #666; margin: 0 0 2rem; font-size: 1rem; }
+    nav { display: flex; flex-direction: column; gap: 1rem; }
+    .btn {
+        display: block;
+        padding: 18px 20px;
+        border-radius: 10px;
+        border: none;
+        font-weight: bold;
+        font-size: 1.05rem;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+        text-decoration: none;
+        cursor: pointer;
+        font-family: inherit;
+        width: 100%;
+    }
+    .btn:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
+    .btn-alumnes { background-color: var(--primary); color: white; }
+    .btn-marcador { background-color: var(--success); color: var(--dark); }
+    .btn-docents {
+        background-color: #eee;
+        color: #888;
+        position: relative;
+    }
+    .btn-docents:disabled { cursor: not-allowed; }
+    .badge {
+        display: block;
+        font-size: .7rem;
+        font-weight: normal;
+        text-transform: none;
+        letter-spacing: normal;
+        margin-top: 4px;
+        color: #999;
+    }
+    footer { margin-top: 2rem; font-size: .85rem; color: #999; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="emoji">🤖</div>
+    <h1>micro:bitada Penedès 2026</h1>
+    <p class="subtitle">Selecciona on vols anar</p>
+
+    <nav aria-label="Accés a les eines de la micro:bitada">
+        <a class="btn btn-alumnes" href="microbitada26/microbitada.html">Micro:bitada — Alumnes</a>
+        <button type="button" class="btn btn-docents" disabled aria-label="Micro:bitada — Docents, properament disponible">
+            Micro:bitada — Docents
+            <span class="badge">Properament</span>
+        </button>
+        <a class="btn btn-marcador" href="microbitada26/marcador.html">Marcador en viu</a>
+    </nav>
+
+    <footer>ST Penedès · mentoria-apps</footer>
+</div>
+
+</body>
+</html>
