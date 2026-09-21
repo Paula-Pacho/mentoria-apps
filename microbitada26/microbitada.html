@@ -43,6 +43,9 @@
         #display-timer { font-size: 2.5rem; font-family: monospace; color: var(--danger); margin: 10px 0; }
         #code-input { width: 80%; text-align: center; font-size: 1.5rem; }
         .lock-footer { margin-top: 20px; width: 100%; display: flex; justify-content: flex-start; }
+        .summary-box { background:#f8f9fa; border:2px solid #ddd; border-radius:10px; padding:15px 20px; margin: 15px 0; text-align:left; }
+        .summary-box h3 { margin-top:0; color:var(--dark); }
+        .summary-box p { margin: 6px 0; }
     .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
     .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
     .site-footer .footer-logos-financament { max-width: 420px; margin-bottom: 14px; }
@@ -116,7 +119,17 @@
         <button class="btn-emergency" onclick="confirmEndSession()">Acaba la micro:bitada!</button>
 
         <div id="display-timer">00:00</div>
-        
+
+        <div id="session-summary-zone" class="hidden">
+            <div class="summary-box">
+                <h3>Resum de la sessió</h3>
+                <p><strong>Temps:</strong> <span id="summary-temps"></span></p>
+                <p><strong>Reptes assolits:</strong> <span id="summary-reptes"></span></p>
+                <p><strong>Grup:</strong> <span id="summary-grup"></span></p>
+                <p><strong>Components:</strong> <span id="summary-components"></span></p>
+            </div>
+        </div>
+
         <div id="viewer-zone">
             <div class="viewer-container"><button type="button" id="img-zoom-btn" class="img-zoom-btn" aria-label="Amplia la imatge a pantalla completa"><img src="" id="current-img" class="viewer-img"></button></div>
             
@@ -142,21 +155,11 @@
             </div>
         </div>
 
-        <button id="btn-finish-all" class="btn-finish hidden" onclick="endGroupSession()">🏆 ACABAR GIMCANA 🏆</button>
+        <button id="btn-finish-all" class="btn-finish hidden" onclick="finishSession()">🏆 ACABAR GIMCANA 🏆</button>
 
-        <div id="emergency-end-zone" class="hidden">
-            <p style="color:var(--dark); font-weight:bold;">La micro:bitada s'ha finalitzat.</p>
-            <a class="btn-main" style="display:inline-block; text-decoration:none;" href="../index.html">Torna a la pàgina principal</a>
+        <div id="final-actions-zone" class="hidden">
+            <a class="btn-main" style="display:inline-block; text-decoration:none;" href="https://microbitada.cat/index.html">Torna a la pàgina principal</a>
         </div>
-    </div>
-
-    <div id="step-results" class="hidden">
-        <h2>Classificació Final</h2>
-        <table style="width:100%; border-collapse: collapse;" id="leaderboard">
-            <thead><tr style="background:#ddd"><th>Pos</th><th>Grup</th><th>Temps Total</th></tr></thead>
-            <tbody id="leaderboard-rows"></tbody>
-        </table>
-        <br><button class="btn-main" onclick="location.reload()">Nou Joc</button>
     </div>
 
     <footer class="site-footer">
@@ -208,7 +211,7 @@
 
     let school = "", allGroups = [], tempGroup = { name: "", size: "" };
     let activeGroupIdx = 0, currentImgIdx = 0, timerInterval, startTime, currentGroupNum = "1";
-    let finalRanking = [], tempsReptes = ["", "", "", "", ""];
+    let tempsReptes = ["", "", "", "", ""];
     let groupSessionId = "";
 
     // Envia un event al Apps Script (Content-Type: text/plain per evitar el preflight CORS).
@@ -361,7 +364,7 @@
         const data = {
             school, allGroups, tempGroup, activeGroupIdx,
             currentImgIdx, currentGroupNum, startTime,
-            tempsReptes, finalRanking, groupSessionId,
+            tempsReptes, groupSessionId,
             passedFlags: GAME_FLOW.map(f => !!f.passed)
         };
         try {
@@ -396,7 +399,6 @@
         currentGroupNum = saved.currentGroupNum;
         startTime = saved.startTime;
         tempsReptes = saved.tempsReptes;
-        finalRanking = saved.finalRanking;
         groupSessionId = saved.groupSessionId;
         GAME_FLOW.forEach((f, i) => { f.passed = !!saved.passedFlags[i]; });
 
@@ -487,69 +489,41 @@
 
     function confirmEndSession() {
         if(confirm("Segur que vols acabar la gimcana ara? S'enviaran les dades actuals.")) {
-            finishEmergency();
+            finishSession();
         }
     }
 
-    // Tall manual (botó vermell "Acaba la micro:bitada!"): a diferència
-    // d'endGroupSession() -que passa al següent grup del mateix dispositiu o
-    // mostra la classificació-, aquí cada dispositiu és un únic grup, així
-    // que simplement mostrem la imatge final, avisem el servidor que la
-    // sessió ha acabat i deixem un botó per tornar a l'inici.
-    function finishEmergency() {
+    // Pantalla final única: s'hi arriba tant si es prem el botó vermell
+    // "Acaba la micro:bitada!" (tall manual) com si s'arriba al final del
+    // recorregut i es prem "ACABAR GIMCANA" (final normal). Com que cada
+    // dispositiu és un únic grup durant tota la dinàmica, no cal cap
+    // classificació entre grups: només mostrem el resum d'aquesta sessió.
+    function finishSession() {
         clearInterval(timerInterval);
         clearProgress();
 
+        const g = allGroups[activeGroupIdx];
+        const tempsTotal = document.getElementById('display-timer').innerText;
+        const reptesAssolits = GAME_FLOW.filter(f => f.passed).length;
+
         sendEvent('finish', {
-            retoActual: GAME_FLOW.filter(f => f.passed).length,
+            retoActual: reptesAssolits,
             tempsReptes: tempsReptes
         });
+
+        document.getElementById('summary-temps').textContent = tempsTotal;
+        document.getElementById('summary-reptes').textContent = `${reptesAssolits} de ${GAME_FLOW.length}`;
+        document.getElementById('summary-grup').textContent = g ? g.name : "";
+        document.getElementById('summary-components').textContent = g ? g.size : "";
 
         document.getElementById('current-img').src = `${BASE_URL}/${TOTAL_IMAGES}.jpg`;
         document.querySelector('.btn-emergency').classList.add('hidden');
+        document.getElementById('display-timer').classList.add('hidden');
         document.getElementById('navigation-zone').classList.add('hidden');
         document.getElementById('lock-zone').classList.add('hidden');
         document.getElementById('btn-finish-all').classList.add('hidden');
-        document.getElementById('emergency-end-zone').classList.remove('hidden');
-    }
-
-    function endGroupSession() {
-        clearInterval(timerInterval);
-        clearProgress();
-        const timeTotal = document.getElementById('display-timer').innerText;
-        const gName = allGroups[activeGroupIdx].name;
-
-        sendEvent('finish', {
-            retoActual: GAME_FLOW.filter(f => f.passed).length,
-            tempsReptes: tempsReptes
-        });
-
-        finalRanking.push({ name: gName, time: timeTotal, ms: Date.now() - startTime });
-        
-        activeGroupIdx++;
-        if(activeGroupIdx < allGroups.length) {
-            document.getElementById('step-challenge').classList.add('hidden');
-            document.getElementById('step-start').classList.remove('hidden');
-            setupGroupStart(activeGroupIdx);
-        } else {
-            showFinalResults();
-        }
-    }
-
-    function showFinalResults() {
-        document.getElementById('step-challenge').classList.add('hidden');
-        document.getElementById('step-results').classList.remove('hidden');
-        finalRanking.sort((a,b) => a.ms - b.ms);
-        const tbody = document.getElementById('leaderboard-rows');
-        tbody.innerHTML = "";
-        finalRanking.forEach((res, i) => {
-            const tr = document.createElement('tr');
-            const tdPos = document.createElement('td');   tdPos.textContent = i + 1;
-            const tdName = document.createElement('td');  tdName.textContent = res.name;
-            const tdTime = document.createElement('td');  tdTime.textContent = res.time;
-            tr.append(tdPos, tdName, tdTime);
-            tbody.appendChild(tr);
-        });
+        document.getElementById('session-summary-zone').classList.remove('hidden');
+        document.getElementById('final-actions-zone').classList.remove('hidden');
     }
 
     tryRestoreProgress();
