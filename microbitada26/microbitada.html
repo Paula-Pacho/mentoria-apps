@@ -45,9 +45,8 @@
         .summary-box { background:#f8f9fa; border:2px solid #ddd; border-radius:10px; padding:15px 20px; margin: 15px 0; text-align:left; }
         .summary-box h3 { margin-top:0; color:var(--dark); }
         .summary-box p { margin: 6px 0; }
-        .btn-landing { display:block; padding:18px 20px; border-radius:10px; border:none; font-weight:bold; font-size:1.05rem; text-transform:uppercase; letter-spacing:.02em; text-decoration:none; cursor:pointer; font-family:inherit; width:100%; margin-top:15px; }
-        .btn-landing:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
-        .btn-tornar { background-color: var(--primary); color: white; }
+        .btn-tornar-header { display:inline-block; padding:10px 18px; border-radius:8px; border:none; font-weight:bold; font-size:.95rem; text-decoration:none; cursor:pointer; font-family:inherit; box-sizing:border-box; background-color: var(--primary); color: white; margin-bottom: 15px; }
+        .btn-tornar-header:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
     .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
     .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
     .site-footer .footer-logos-financament { max-width: 420px; margin-bottom: 14px; }
@@ -137,6 +136,10 @@
 
         <div id="display-timer">00:00</div>
 
+        <div id="final-actions-zone" class="hidden">
+            <a class="btn-tornar-header" href="https://microbitada.cat/index.html">← Torna a la pàgina principal</a>
+        </div>
+
         <div id="session-summary-zone" class="hidden">
             <div class="summary-box">
                 <h3>Resum de la sessió</h3>
@@ -170,10 +173,6 @@
             <div class="lock-footer">
                 <button class="btn-nav" onclick="nav(-1)">⬅ Tornar a la pista</button>
             </div>
-        </div>
-
-        <div id="final-actions-zone" class="hidden">
-            <a class="btn-landing btn-tornar" href="https://microbitada.cat/index.html">Torna a la pàgina principal</a>
         </div>
     </div>
 
@@ -209,8 +208,8 @@
     // Cada repte porta la seva pròpia llista d'imatges (es veuen abans que
     // aparegui el seu candado). Per canviar quantes imatges té un repte,
     // només cal afegir/treure noms d'aquesta llista — no cal tocar res més.
-    // Si el grup ha triat "Nivell 2", loadRepteImage() prova primer la variant
-    // "<nom>_N2" i, si no existeix, cau a la imatge normal (Nivell 1).
+    // Si el grup ha triat "Nivell 2", loadImageWithLevel() prova primer la variant
+    // "<nom>_N2" (també per a P1-P3) i, si no existeix, cau a la imatge normal (Nivell 1).
     const GAME_FLOW = [
         { images: ['R1_1', 'R1_2', 'R1_3'],          type: 'code',   key: 'c4',   title: "Codi de 4 xifres" },
         { images: ['R2_1', 'R2_2', 'R2_3'],          type: 'matrix', key: 'p1',   title: "Patró 5x5 (1)" },
@@ -363,7 +362,7 @@
     // el cronòmetre encara no s'ha engegat. A la darrera imatge (P3), "Endavant"
     // deixa pas al botó START, que és el que realment engega el cronòmetre.
     function updateIntroViewer() {
-        document.getElementById('intro-img').src = `${BASE_URL}/${INTRO_IMAGES[introIdx]}.jpg`;
+        loadImageWithLevel(document.getElementById('intro-img'), INTRO_IMAGES[introIdx]);
         document.getElementById('intro-btn-prev').style.visibility = (introIdx === 0) ? "hidden" : "visible";
 
         const esLaDarrera = introIdx === INTRO_IMAGES.length - 1;
@@ -453,11 +452,11 @@
         updateTimer();
     }
 
-    // Carrega la imatge d'un repte, amb variant de Nivell 2 si el grup l'ha triat:
-    // prova primer "<nom>_N2.jpg" i, si no existeix (l'organització no l'ha creat
-    // per a aquesta imatge en concret), cau automàticament a la imatge normal.
-    function loadRepteImage(baseName) {
-        const img = document.getElementById('current-img');
+    // Carrega una imatge (P1-P3 o d'un repte) a l'element <img> indicat, amb variant
+    // de Nivell 2 si el grup l'ha triat: prova primer "<nom>_N2.jpg" i, si no existeix
+    // (l'organització no ha creat aquesta imatge en concret per al nivell 2), cau
+    // automàticament a la imatge normal (Nivell 1).
+    function loadImageWithLevel(img, baseName) {
         const esNivell2 = allGroups[activeGroupIdx] && allGroups[activeGroupIdx].level === "2";
 
         if(esNivell2) {
@@ -494,7 +493,7 @@
             document.getElementById('viewer-zone').classList.remove('hidden');
             document.getElementById('lock-zone').classList.add('hidden');
 
-            loadRepteImage(repte.images[imgWithinRepto]);
+            loadImageWithLevel(document.getElementById('current-img'), repte.images[imgWithinRepto]);
 
             document.getElementById('btn-prev').style.visibility = (imgWithinRepto === 0) ? "hidden" : "visible";
         }
