@@ -32,6 +32,13 @@ const HORES_CADUCITAT = 4; // hores sense actualitzar-se a partir de les quals u
 // (Fem servir GET per a tot, també per als events del joc, perquè els POST a un
 // Apps Script Web App no sempre porten la capçalera CORS que el navegador exigeix
 // per poder-ne llegir la resposta, encara que el POST s'executi bé al servidor.)
+// ================================================================
+// PUNT D'ENTRADA DE TOTES LES PETICIONS
+// Google crida sempre doGet(): tant el joc (microbitada.html) com el
+// marcador (marcador.html) li parlen per GET (mai per POST, veure
+// comentari més avall). Segons si porta "action" o no, es reparteix
+// cap a gestionarEvent() o cap a llegirEstat().
+// ================================================================
 function doGet(e) {
   // e pot ser undefined si aquesta funció es prova manualment des de l'editor
   // (botó "Executar" amb doGet seleccionat): aleshores no hi ha cap petició
@@ -44,6 +51,10 @@ function doGet(e) {
   return llegirEstat();
 }
 
+// ================================================================
+// GESTIÓ D'EVENTS DEL JOC ("progress" quan s'avança de repte, "finish"
+// quan s'acaba la partida)
+// ================================================================
 function gestionarEvent(dadesOriginals) {
   try {
     const dades = Object.assign({}, dadesOriginals, {
@@ -70,6 +81,10 @@ function gestionarEvent(dadesOriginals) {
   }
 }
 
+// ================================================================
+// RESPOSTA AL MARCADOR: retorna l'estat de tots els grups en curs
+// (tot el contingut, ara mateix, del full "Estat en viu")
+// ================================================================
 function llegirEstat() {
   const sheet = obtenirOCrearFullEstat();
   const valors = sheet.getDataRange().getValues();
@@ -87,6 +102,9 @@ function respondreJSON(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// ================================================================
+// FULL "Estat en viu" (una fila per cada partida EN CURS ara mateix)
+// ================================================================
 function obtenirOCrearFullEstat() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_ESTAT);
@@ -157,6 +175,10 @@ function eliminarDeEstatEnViu(sessionId) {
   }
 }
 
+// ================================================================
+// FULL "Sessions finalitzades" (l'historial de totes les partides ja
+// ACABADES, amb el temps de cada repte)
+// ================================================================
 /**
  * Retorna el full "Sessions finalitzades", creant-lo amb les capçaleres
  * correctes si encara no existeix.
@@ -225,6 +247,10 @@ function registrarRespostaFinal(body) {
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, novaFila.length).setValues([novaFila]);
 }
 
+// ================================================================
+// MANTENIMENT AUTOMÀTIC: neteja de sessions abandonades (dispositiu
+// tancat sense prémer cap botó de final) i el seu trigger horari
+// ================================================================
 /**
  * Neteja "Estat en viu": qualsevol sessió que porti més de HORES_CADUCITAT
  * hores sense actualitzar-se es considera abandonada (el dispositiu es va
