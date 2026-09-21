@@ -2,7 +2,7 @@
 
 Aquest repositori conté el codi de la **micro:bitada**, una gimcana/joc de pistes per a escoles que fa servir plaques micro:bit. Aquest document explica, pas a pas i sense donar per fet que saps programar ni que has fet servir mai Git o GitHub, **què hi ha en aquest repositori i com es fan servir i es modifiquen els fitxers**.
 
-Si el que busques és el detall tècnic de com funciona el codi per dins (bugs trobats, decisions de disseny, etc.), consulta la carpeta [`microbitada26/documentacion/`](microbitada26/documentacion/) — aquest README és la porta d'entrada per a qui comença de zero.
+Si el que busques és el detall tècnic de com funciona el codi per dins (bugs trobats, decisions de disseny, etc.), consulta la carpeta [`microbitada26/documentacio/`](microbitada26/documentacio/) — aquest README és la porta d'entrada per a qui comença de zero.
 
 ---
 
@@ -41,7 +41,7 @@ mentoria-apps/
     ├── imatges/
     │   ├── README.md                   → explica la nomenclatura de les imatges (veure secció 6)
     │   └── P1.jpg, R1_1.jpg, F1.jpg...  → totes les imatges que es veuen durant el joc
-    └── documentacion/
+    └── documentacio/
         ├── analisis-codigo-microbitada.md      → com funciona el codi per dins, decisions preses
         └── notas-despliegue-apps-script.md     → com desplegar canvis a Code.gs sense errors
 ```
@@ -144,7 +144,7 @@ No cal tocar cap línia de codi per afegir o canviar imatges: només cal pujar e
 
 `Code.gs` **no viu a GitHub de la mateixa manera que la resta**: és un programa que s'executa dins Google (Apps Script), lligat directament al Google Sheet de respostes. Editar aquest fitxer al repositori (i fer `git push`) **no actualitza per si sol** el que Google executa de debò — cal enganxar el codi actualitzat dins l'editor d'Apps Script i tornar-lo a desplegar.
 
-Resum ràpid dels passos (el detall complet, amb els errors típics que ens hem trobat i com evitar-los, és a [`microbitada26/documentacion/notas-despliegue-apps-script.md`](microbitada26/documentacion/notas-despliegue-apps-script.md)):
+Resum ràpid dels passos (el detall complet, amb els errors típics que ens hem trobat i com evitar-los, és a [`microbitada26/documentacio/notas-despliegue-apps-script.md`](microbitada26/documentacio/notas-despliegue-apps-script.md)):
 
 1. Obre el Google Sheet de respostes i vés a `Extensions > Apps Script`.
 2. Esborra tot el contingut de `Code.gs` que hi hagi i enganxa-hi el contingut actualitzat del fitxer del repositori.
@@ -159,8 +159,8 @@ La URL del programa (la que fan servir `microbitada.html` i `marcador.html` per 
 
 ## 8. On trobar més documentació
 
-- [`microbitada26/documentacion/analisis-codigo-microbitada.md`](microbitada26/documentacion/analisis-codigo-microbitada.md): explicació detallada de com funciona el codi per dins, bugs que s'han anat trobant i resolent, i decisions de disseny preses al llarg del projecte.
-- [`microbitada26/documentacion/notas-despliegue-apps-script.md`](microbitada26/documentacion/notas-despliegue-apps-script.md): checklist detallada per desplegar canvis a `Code.gs` sense repetir errors ja coneguts.
+- [`microbitada26/documentacio/analisis-codigo-microbitada.md`](microbitada26/documentacio/analisis-codigo-microbitada.md): explicació detallada de com funciona el codi per dins, bugs que s'han anat trobant i resolent, i decisions de disseny preses al llarg del projecte.
+- [`microbitada26/documentacio/notas-despliegue-apps-script.md`](microbitada26/documentacio/notas-despliegue-apps-script.md): checklist detallada per desplegar canvis a `Code.gs` sense repetir errors ja coneguts.
 - [`microbitada26/imatges/README.md`](microbitada26/imatges/README.md): nomenclatura de les imatges (resumida també a la secció 6 d'aquest document).
 - Dins de cada fitxer de codi (`index.html`, `microbitada.html`, `marcador.html`, `Code.gs`) hi ha comentaris que identifiquen cada secció, perquè sigui més fàcil orientar-s'hi encara que no s'hagi programat mai. Busca els blocs que comencen amb `<!-- ... -->` (HTML), `/* ... */` (CSS) o `// ...` (JavaScript i Apps Script).
 
