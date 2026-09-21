@@ -158,7 +158,7 @@
             </div>
         </div>
 
-        <button id="btn-finish-all" class="btn-finish hidden" onclick="finishSession()">🏆 ACABAR GIMCANA 🏆</button>
+        <button id="btn-finish-all" class="btn-finish hidden" onclick="finishSession(TOTAL_IMAGES - 1)">🏆 ACABAR GIMCANA 🏆</button>
 
         <div id="final-actions-zone" class="hidden">
             <a class="btn-landing btn-tornar" href="https://microbitada.cat/index.html">Torna a la pàgina principal</a>
@@ -492,7 +492,7 @@
 
     function confirmEndSession() {
         if(confirm("Segur que vols acabar la gimcana ara? S'enviaran les dades actuals.")) {
-            finishSession();
+            finishSession(TOTAL_IMAGES);
         }
     }
 
@@ -501,7 +501,9 @@
     // recorregut i es prem "ACABAR GIMCANA" (final normal). Com que cada
     // dispositiu és un únic grup durant tota la dinàmica, no cal cap
     // classificació entre grups: només mostrem el resum d'aquesta sessió.
-    function finishSession() {
+    // imgFinal: quina imatge final es mostra (20 si s'ha completat el
+    // repte 5, 21 si s'ha premut el botó vermell d'emergència).
+    function finishSession(imgFinal) {
         clearInterval(timerInterval);
         clearProgress();
 
@@ -519,7 +521,7 @@
         document.getElementById('summary-grup').textContent = g ? g.name : "";
         document.getElementById('summary-components').textContent = g ? g.size : "";
 
-        document.getElementById('current-img').src = `${BASE_URL}/${TOTAL_IMAGES}.jpg`;
+        document.getElementById('current-img').src = `${BASE_URL}/${imgFinal}.jpg`;
         document.querySelector('.btn-emergency').classList.add('hidden');
         document.getElementById('display-timer').classList.add('hidden');
         document.getElementById('viewer-zone').classList.remove('hidden');
