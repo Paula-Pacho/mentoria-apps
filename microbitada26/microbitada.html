@@ -74,7 +74,6 @@
 
     <div id="step-groups" class="hidden">
         <p style="color:var(--dark); font-weight:bold;">El/la docent us indicarà el número de grup (1-5) segons el material que us hagi repartit.</p>
-        <p id="max-groups-msg" class="hidden" style="color:var(--danger); font-weight:bold;">Ja s'han configurat els 5 grups màxims. Prem "FINALITZAR CONFIGURACIÓ" per continuar.</p>
         <h2 id="group-title">Nom del Grup</h2>
         <div id="group-number-zone">
             <label for="group-number-select">Número de grup (el que us ha indicat el/la docent)</label>
@@ -105,9 +104,7 @@
         <input type="text" id="main-input" placeholder="Ex: Els Súpers">
         <div style="margin-top:15px;">
             <button id="action-btn" class="btn-main" onclick="processLogic()">Següent</button>
-            <button id="next-group-btn" class="hidden" style="background:var(--secondary); color:var(--dark)" onclick="resetForNewGroup()">Nou Grup</button>
         </div>
-        <button id="finalize-btn" class="btn-finish hidden" onclick="prepareToStart()">FINALITZAR CONFIGURACIÓ</button>
     </div>
 
     <div id="step-start" class="hidden">
@@ -301,8 +298,11 @@
         document.getElementById('step-groups').classList.remove('hidden');
     }
 
+    // Registre del grup en un sol pas: com que cada dispositiu s'assigna a un
+    // únic grup durant tota la dinàmica, ja no calen els antics botons "Nou
+    // Grup"/"FINALITZAR CONFIGURACIÓ" (fins a 5 grups per dispositiu). En
+    // omplir els 3 camps i prémer "Següent" es passa directament a START.
     function processLogic() {
-        if (allGroups.length >= 5) return; // ja s'ha arribat al màxim de 5 grups
         const input = document.getElementById('main-input');
         const val = input.value.trim();
         if(!val) return alert("Escriu el nom de l'equip abans de continuar.");
@@ -319,34 +319,11 @@
         tempGroup.number = numeroSelect.value;
         tempGroup.name = val;
         tempGroup.size = sizeSelect.value;
-
-        document.getElementById('group-title').innerText = "Grup registrat: " + val;
-        document.getElementById('action-btn').classList.add('hidden');
-        input.classList.add('hidden');
-        document.getElementById('group-number-zone').classList.add('hidden');
-        document.getElementById('group-size-zone').classList.add('hidden');
-        document.getElementById('next-group-btn').classList.remove('hidden');
-        document.getElementById('finalize-btn').classList.remove('hidden');
-    }
-
-    function resetForNewGroup() {
         allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
-        tempGroup = { name: "", size: "" };
-        document.getElementById('group-title').innerText = "Nom del Grup";
-        document.getElementById('main-input').value = "";
-        document.getElementById('main-input').classList.remove('hidden');
-        document.getElementById('action-btn').classList.remove('hidden');
-        document.getElementById('next-group-btn').classList.add('hidden');
-        document.getElementById('group-number-select').value = "";
-        document.getElementById('group-number-zone').classList.remove('hidden');
-        document.getElementById('group-size-select').value = "";
-        document.getElementById('group-size-zone').classList.remove('hidden');
 
-        if (allGroups.length >= 5) {
-            document.getElementById('main-input').classList.add('hidden');
-            document.getElementById('action-btn').classList.add('hidden');
-            document.getElementById('max-groups-msg').classList.remove('hidden');
-        }
+        document.getElementById('step-groups').classList.add('hidden');
+        document.getElementById('step-start').classList.remove('hidden');
+        setupGroupStart(activeGroupIdx);
     }
 
     function setupGroupStart(idx) {
@@ -356,13 +333,6 @@
         // manualment el/la docent en desplegable (veure processLogic), perquè
         // cada dispositiu s'assigna a un grup concret amb el seu propi material.
         currentGroupNum = allGroups[idx].number;
-    }
-
-    function prepareToStart() {
-        if(tempGroup.name && allGroups.length < 5) allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
-        document.getElementById('step-groups').classList.add('hidden');
-        document.getElementById('step-start').classList.remove('hidden');
-        setupGroupStart(activeGroupIdx);
     }
 
     function initChallenge() {
