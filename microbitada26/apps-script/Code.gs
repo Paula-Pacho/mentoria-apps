@@ -184,8 +184,15 @@ function registrarRespostaFinal(body) {
     sheet.getRange(1, 10).setValue("Número de grup");
   }
   // Mateix motiu que a "Estat en viu": Temps i Temps repte 1-5 (columnes D-I)
-  // són text "mm:ss", no hores reals.
-  sheet.getRange("D:I").setNumberFormat("@");
+  // són text "mm:ss", no hores reals. Formatem cada columna per separat (no
+  // "D:I" de cop): en aquest full -vinculat a un Google Form- un rang que
+  // abasta MÉS D'UNA columna sencera és exactament el que provoca l'error
+  // "Fes una selecció dins d'una sola columna per dur a terme accions al
+  // nivell de columna." Una columna cada vegada ("F:F", igual que fem a
+  // "Estat en viu", que mai ha donat aquest error) no té aquesta restricció.
+  ["D:D", "E:E", "F:F", "G:G", "H:H", "I:I"].forEach(function (col) {
+    sheet.getRange(col).setNumberFormat("@");
+  });
 
   const tr = body.tempsReptes || [];
   const novaFila = [
