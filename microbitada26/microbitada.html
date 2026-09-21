@@ -1,10 +1,23 @@
 <!DOCTYPE html>
+<!--
+  MICROBITADA.HTML — El joc (pantalla de l'alumnat)
+  ====================================================
+  Aquesta és la pàgina que fa servir cada grup d'alumnes, un dispositiu
+  per grup. Té quatre pantalles que es van mostrant/amagant una darrere
+  l'altra (mai es navega a una altra pàgina): 1) tria de l'escola,
+  2) registre del grup (número, mida, nivell, nom), 3) presentació amb
+  imatges P1-P3 abans de prémer START, i 4) el joc en si (cronòmetre,
+  imatges de pista i candaus per introduir la resposta de cada repte).
+  Cada progrés i resultat s'envia també al backend (Code.gs) perquè
+  es vegi al marcador en directe (marcador.html).
+-->
 <html lang="ca">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gimcana Digital - micro:bitada Penedès 2026</title>
     <style>
+        /* Colors generals de tota la pàgina */
         :root { --primary: #2275d7; --secondary: #f39c12; --danger: #df2e1b; --success: #2ecc71; --dark: #2c3e50; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #e9ecef; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 95%; max-width: 650px; text-align: center; }
@@ -16,10 +29,12 @@
         .btn-start { background-color: var(--success); color: var(--dark); font-size: 1.5rem; }
         .btn-nav { background-color: var(--dark); color: white; }
         .btn-emergency { background-color: var(--danger); color: white; margin-bottom: 15px; width: 100%; }
+        /* Visor: on es veuen les imatges de pista i, al final, la imatge de resultat (F0/F1) */
         .viewer-container { background: #000; border-radius: 10px; margin: 20px 0; overflow: hidden; min-height: 250px; display: flex; align-items: center; justify-content: center; }
         .viewer-img { width: 100%; height: auto; display: block; }
         .nav-buttons { display: flex; justify-content: space-between; padding: 10px; }
         
+        /* Quadrícula 5x5: per als reptes de tipus "matrix" (activar caselles per reproduir un patró) */
         .grid-5x5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 246px; margin: 15px auto; }
         .cell { width: 44px; height: 44px; background: #eee; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; padding: 0; font: inherit; }
         .cell.active { background: var(--secondary); box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
@@ -31,6 +46,7 @@
             .container { max-width: 900px; }
         }
 
+        /* Lightbox: ampliar la imatge de pista a pantalla completa en tocar-la */
         .img-zoom-btn { background: none; border: none; padding: 0; margin: 0; display: block; width: 100%; cursor: zoom-in; }
         .img-zoom-btn:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
         .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
@@ -38,15 +54,18 @@
         .lightbox-close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: 50%; border: none; background: white; color: var(--dark); font-size: 1.3rem; line-height: 1; cursor: pointer; }
         .lightbox-close:focus-visible { outline: 3px solid var(--secondary); outline-offset: 2px; }
         
+        /* Candau: formulari per introduir la resposta (codi, paraula o patró) d'un repte */
         .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #display-timer { font-size: 2.5rem; font-family: monospace; color: var(--danger); margin: 10px 0; }
         #code-input { width: 80%; text-align: center; font-size: 1.5rem; }
         .lock-footer { margin-top: 20px; width: 100%; display: flex; justify-content: flex-start; }
+        /* Resum final: es mostra un cop acabada la partida (F0 o F1) */
         .summary-box { background:#f8f9fa; border:2px solid #ddd; border-radius:10px; padding:15px 20px; margin: 15px 0; text-align:left; }
         .summary-box h3 { margin-top:0; color:var(--dark); }
         .summary-box p { margin: 6px 0; }
         .btn-tornar-header { display:inline-block; padding:10px 18px; border-radius:8px; border:none; font-weight:bold; font-size:.95rem; text-decoration:none; cursor:pointer; font-family:inherit; box-sizing:border-box; background-color: var(--primary); color: white; margin-bottom: 15px; }
         .btn-tornar-header:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
+    /* Peu de pàgina (igual a totes les pàgines) */
     .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
     .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
     .site-footer .footer-logos-financament { max-width: 420px; margin-bottom: 14px; }
@@ -58,6 +77,7 @@
 <body>
 
 <div class="container">
+    <!-- PANTALLA 1: tria de l'escola -->
     <div id="step-school">
         <h2>Benvinguts i benvingudes a la micro:bitada Penedès 2026</h2>
         <label for="school-input" class="sr-only">Nom de l'escola</label>
@@ -76,6 +96,7 @@
         <button class="btn-main" onclick="goToGroups()">Següent</button>
     </div>
 
+    <!-- PANTALLA 2: registre del grup (número, mida, nivell i nom de l'equip) -->
     <div id="step-groups" class="hidden">
         <p style="color:var(--dark); font-weight:bold;">El/la docent us indicarà el número de grup (1-5) segons el material que us hagi repartit.</p>
         <h2 id="group-title">Nom del Grup</h2>
@@ -119,6 +140,7 @@
         </div>
     </div>
 
+    <!-- PANTALLA 3: presentació (imatges P1-P3) abans de prémer START; el cronòmetre encara no corre -->
     <div id="step-start" class="hidden">
         <h2>Preparats, <span id="current-group-name"></span>?</h2>
 
@@ -131,15 +153,19 @@
         </div>
     </div>
 
+    <!-- PANTALLA 4: el joc (cronòmetre, imatges de pista i candaus per introduir la resposta) -->
     <div id="step-challenge" class="hidden">
+        <!-- Acaba la partida abans d'hora (mostra la imatge F0) -->
         <button class="btn-emergency" onclick="confirmEndSession()">Acaba la micro:bitada!</button>
 
         <div id="display-timer">00:00</div>
 
+        <!-- Es mostra només quan la partida ja ha acabat: enllaç de tornada a l'inici -->
         <div id="final-actions-zone" class="hidden">
             <a class="btn-tornar-header" href="https://microbitada.cat/index.html">← Torna a la pàgina principal</a>
         </div>
 
+        <!-- Es mostra només quan la partida ja ha acabat: resum de temps i reptes assolits -->
         <div id="session-summary-zone" class="hidden">
             <div class="summary-box">
                 <h3>Resum de la sessió</h3>
@@ -150,6 +176,7 @@
             </div>
         </div>
 
+        <!-- Visor de les imatges de pista del repte actual -->
         <div id="viewer-zone">
             <div class="viewer-container"><button type="button" id="img-zoom-btn" class="img-zoom-btn" aria-label="Amplia la imatge a pantalla completa"><img src="" id="current-img" class="viewer-img"></button></div>
             
@@ -159,6 +186,7 @@
             </div>
         </div>
 
+        <!-- Candau: es mostra quan s'han vist totes les imatges de pista del repte actual -->
         <div id="lock-zone" class="lock-box hidden">
             <h3 id="lock-title">🔒 REPTE BLOQUEJAT</h3>
             <div id="ui-code-container">
@@ -176,6 +204,7 @@
         </div>
     </div>
 
+    <!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
     <footer class="site-footer">
     <img class="footer-logos-financament" src="../assets/logos/Logos-4.0.png" alt="Programa finançat pel Ministeri d’Educació, Formació Professional i Esports, amb el suport de la Generalitat de Catalunya">
     <img class="footer-logo-mentories" src="../assets/logos/Logo-Mentories-4.0-1.png" alt="Logo Mentories 4.0">
@@ -183,12 +212,20 @@
 </footer>
 </div>
 
+<!-- Finestra per veure la imatge de pista ampliada a pantalla completa -->
 <div id="img-lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Imatge ampliada">
     <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Tanca la imatge ampliada">✕</button>
     <img id="lightbox-img" src="" alt="">
 </div>
 
 <script>
+    // ================================================================
+    // CONFIGURACIÓ I DADES DEL JOC
+    // BASE_URL: on viuen les imatges. STORAGE_KEY: clau per desar el
+    // progrés al navegador. APPS_SCRIPT_URL: backend (Code.gs).
+    // GROUP_KEYS: la resposta correcta de cada repte, per grup (1-5).
+    // GAME_FLOW: les imatges i el tipus/resposta de cada repte, en ordre.
+    // ================================================================
     const BASE_URL = "https://raw.githubusercontent.com/Paula-Pacho/mentoria-apps/main/microbitada26/imatges";
     const STORAGE_KEY = "microbitada_progress_v1";
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJb0pHUdsrC6waMVTxeE8tXwZI_rsts_KVWpqf4hN3LFrZbuHx4j-KS9_ohYqktY80/exec";
@@ -224,6 +261,9 @@
     let tempsReptes = ["", "", "", "", ""];
     let groupSessionId = "";
 
+    // ================================================================
+    // COMUNICACIÓ AMB EL BACKEND (Google Apps Script / Code.gs)
+    // ================================================================
     // Envia un event al Apps Script (Content-Type: text/plain per evitar el preflight CORS).
     // No bloqueja el joc si falla: només ho avisem quan és l'event final ("finish").
     function sendEvent(action, extra) {
@@ -268,6 +308,9 @@
         });
     }
 
+    // ================================================================
+    // AMPLIAR IMATGE A PANTALLA COMPLETA (lightbox)
+    // ================================================================
     const imgZoomBtn = document.getElementById('img-zoom-btn');
     const lightbox = document.getElementById('img-lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
@@ -292,6 +335,9 @@
     lightboxClose.addEventListener('click', tancarLightbox);
     lightbox.addEventListener('click', (e) => { if (e.target === lightbox) tancarLightbox(); });
 
+    // ================================================================
+    // QUADRÍCULA 5x5 (es genera un cop, es fa servir als reptes de tipus "matrix")
+    // ================================================================
     const matrixGrid = document.getElementById('matrix-grid');
     for(let i=0; i<25; i++) {
         let cell = document.createElement('button');
@@ -305,6 +351,9 @@
         matrixGrid.appendChild(cell);
     }
 
+    // ================================================================
+    // PANTALLA 1: ESCOLA
+    // ================================================================
     function goToGroups() {
         school = document.getElementById('school-input').value.trim();
         if(!school) return alert("Si us plau, escriu o tria la teva escola");
@@ -312,6 +361,9 @@
         document.getElementById('step-groups').classList.remove('hidden');
     }
 
+    // ================================================================
+    // PANTALLA 2: REGISTRE DEL GRUP
+    // ================================================================
     // Registre del grup en un sol pas: com que cada dispositiu s'assigna a un
     // únic grup durant tota la dinàmica, ja no calen els antics botons "Nou
     // Grup"/"FINALITZAR CONFIGURACIÓ" (fins a 5 grups per dispositiu). En
@@ -358,6 +410,9 @@
         updateIntroViewer();
     }
 
+    // ================================================================
+    // PANTALLA 3: PRESENTACIÓ (imatges P1-P3 abans de prémer START)
+    // ================================================================
     // Visor de les imatges d'introducció (P1-P3), abans de prémer START:
     // el cronòmetre encara no s'ha engegat. A la darrera imatge (P3), "Endavant"
     // deixa pas al botó START, que és el que realment engega el cronòmetre.
@@ -375,6 +430,9 @@
         updateIntroViewer();
     }
 
+    // ================================================================
+    // CRONÒMETRE I INICI DEL REPTE 1 (en prémer START)
+    // ================================================================
     function initChallenge() {
         document.getElementById('step-start').classList.add('hidden');
         document.getElementById('step-challenge').classList.remove('hidden');
@@ -398,6 +456,10 @@
         saveProgress();
     }
 
+    // ================================================================
+    // DESAR I RECUPERAR EL PROGRÉS (per si es tanca el navegador o la pàgina
+    // es recarrega sense voler; es guarda al propi dispositiu, no al backend)
+    // ================================================================
     function saveProgress() {
         const data = {
             school, allGroups, tempGroup, activeGroupIdx,
@@ -452,6 +514,9 @@
         updateTimer();
     }
 
+    // ================================================================
+    // VISOR D'IMATGES DEL REPTE (amb variant de Nivell 2, si n'hi ha)
+    // ================================================================
     // Carrega una imatge (P1-P3 o d'un repte) a l'element <img> indicat, amb variant
     // de Nivell 2 si el grup l'ha triat: prova primer "<nom>_N2.jpg" i, si no existeix
     // (l'organització no ha creat aquesta imatge en concret per al nivell 2), cau
@@ -499,6 +564,9 @@
         }
     }
 
+    // ================================================================
+    // VALIDACIÓ DEL CANDAU (comprovar la resposta introduïda del repte actual)
+    // ================================================================
     function validateLock() {
         const repte = GAME_FLOW[activeReptoIdx];
         const keys = GROUP_KEYS[currentGroupNum];
@@ -545,6 +613,9 @@
         updateViewer();
     }
 
+    // ================================================================
+    // FINALITZACIÓ DE LA PARTIDA (botó d'emergència o repte 5 resolt)
+    // ================================================================
     function confirmEndSession() {
         if(confirm("Segur que vols acabar la gimcana ara? S'enviaran les dades actuals.")) {
             finishSession('F0');
