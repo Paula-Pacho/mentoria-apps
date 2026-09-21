@@ -1,13 +1,20 @@
 # Imatges de la gimcana
 
-Aquí van les 21 fotos de la seqüència de `microbitada.html`, amb aquest nom exacte:
+Aquí van totes les fotos que fa servir `microbitada.html`, amb un nom que segueix aquest patró perquè el codi les trobi automàticament (definit a `INTRO_IMAGES` i `GAME_FLOW` dins `microbitada.html`):
 
-```
-01.jpg  02.jpg  03.jpg  ...  20.jpg  21.jpg
-```
+| Prefix | Quan es veu | Exemple |
+|---|---|---|
+| `P1`, `P2`, `P3` | Abans de prémer el botó START, amb el cronòmetre encara aturat | `P1.jpg` |
+| `R{n}_{i}` | Imatges de pistes del repte número `n` (1 a 5), abans d'arribar al seu candau; `i` és l'ordre dins d'aquell repte | `R1_1.jpg`, `R1_2.jpg`, `R2_3.jpg` |
+| `F1` | Es mostra quan el grup resol el repte 5 i acaba la gimcana amb èxit | `F1.jpg` |
+| `F0` | Es mostra quan el grup acaba prement el botó d'emergència "Acaba la micro:bitada!" abans de resoldre el repte 5 | `F0.jpg` |
+| `_N2` (sufix, opcional) | Variant de qualsevol de les anteriors per al **Nivell 2** de dificultat. Si no existeix, el joc mostra automàticament la imatge normal (Nivell 1) | `R1_2_N2.jpg`, `P1_N2.jpg` |
 
-- Sempre 2 xifres amb zero davant (01, no 1) i extensió `.jpg` en minúscules.
-- Han d'estar totes, sense forats en la numeració (si falta la 07.jpg, la imatge 7 sortirà trencada sense avís).
-- Ordre: 1 Portada, 2 Resum reptes, 3 Abans de començar, 4-6 Repte 1, 7-9 Repte 2, 10-12 Repte 3, 13-15 Repte 4, 16-19 Repte 5, 20 Final victòria, 21 Final (amb botó finalitzar).
+Notes:
 
-Si el dia de demà canvia el nombre d'imatges o quantes n'hi ha per repte, cal actualitzar `TOTAL_IMAGES` i `IMAGES_BEFORE_LOCK` a `microbitada.html` (estan comentats i pensats per editar-se sols, sense tocar la resta del codi).
+- Extensió `.jpg` sempre en minúscules.
+- Nombre d'imatges per repte: actualment 3 per als reptes 1-4 i 4 per al repte 5 (`R5_1` a `R5_4`), però no cal que tots els reptes en tinguin les mateixes: cada repte porta la seva pròpia llista dins `GAME_FLOW`.
+- Les imatges `_N2` són opcionals una a una: només cal crear-les per a les imatges que es vulguin diferenciar en Nivell 2; si en falta alguna, el joc cau automàticament a la imatge normal (Nivell 1) sense avisar ni trencar-se.
+- `F0` i `F1` no tenen variant `_N2` (la imatge final és la mateixa per a tots dos nivells).
+
+Si el dia de demà cal afegir o treure imatges d'un repte, o afegir-ne un de nou, només cal editar la llista `images` d'aquell repte a `GAME_FLOW` (dins `microbitada.html`) i pujar els fitxers amb el nom corresponent aquí — no cal tocar cap altra part del codi.
