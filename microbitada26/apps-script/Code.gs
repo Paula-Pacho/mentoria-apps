@@ -15,10 +15,18 @@
  * Si tornes a editar aquest fitxer més endavant, cal fer "Implementar" >
  * "Gestiona les implementacions" > llapis (editar) > "Nova versió" > "Implementar",
  * si no els canvis no es veuran reflectits a la URL ja publicada.
+ *
+ * NOMÉS LA PRIMERA VEGADA que enganxis aquesta versió del codi (la que té
+ * la neteja automàtica d'"Estat en viu"), cal fer un pas addicional un sol
+ * cop: obre el desplegable de funcions (a dalt, al costat del botó
+ * "Executar" ▶), tria "installarTriggerNeteja" i prem "Executar". Això
+ * registra la neteja horària; no cal tornar a fer-ho en futures edicions.
  */
 
-const SHEET_RESPOSTES = "Respostes al formulari 1"; // nom exacte de la pestanya on cauen les respostes del Form actual
+const SHEET_RESPOSTES = "Sessions finalitzades"; // pestanya on queden totes les partides acabades (abans "Respostes al formulari 1")
+const SHEET_RESPOSTES_NOM_ANTIC = "Respostes al formulari 1"; // nom antic, per migrar automàticament fulls existents
 const SHEET_ESTAT = "Estat en viu";
+const HORES_CADUCITAT = 4; // hores sense actualitzar-se a partir de les quals una sessió es considera abandonada
 
 // GET amb ?action=progress|finish : el joc avisa d'un canvi d'estat.
 // GET sense "action" : el marcador demana l'estat actual de tots els grups.
@@ -129,14 +137,40 @@ function registrarProgres(body) {
 }
 
 /**
+ * Retorna el full "Sessions finalitzades", creant-lo o migrant-lo si cal:
+ * - Si ja existeix amb el nom nou, el fa servir directament.
+ * - Si encara existeix amb el nom antic ("Respostes al formulari 1"), el
+ *   renombra (no en creem un de nou, per no perdre l'historial que ja hi hagi).
+ * - Si no existeix cap dels dos (full nou, sense Form), el crea amb les
+ *   capçaleres correctes.
+ */
+function obtenirFullRespostes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_RESPOSTES);
+  if (sheet) return sheet;
+
+  const fullAntic = ss.getSheetByName(SHEET_RESPOSTES_NOM_ANTIC);
+  if (fullAntic) {
+    fullAntic.setName(SHEET_RESPOSTES);
+    return fullAntic;
+  }
+
+  sheet = ss.insertSheet(SHEET_RESPOSTES);
+  sheet.appendRow([
+    "Marca de temps", "Escola", "Grup", "Temps total",
+    "Temps repte 1", "Temps repte 2", "Temps repte 3", "Temps repte 4", "Temps repte 5",
+    "Número de grup"
+  ]);
+  return sheet;
+}
+
+/**
  * Afegeix la fila final a la mateixa pestanya on abans queien les respostes del Form,
  * amb el mateix format (Marca de temps, Escola, Grup, Temps, Temps repte 1..5),
  * perquè tot el que ja tinguis fet amb aquestes dades (taules dinàmiques, etc.) segueixi funcionant.
  */
 function registrarRespostaFinal(body) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_RESPOSTES);
-  if (!sheet) return;
+  const sheet = obtenirFullRespostes();
 
   // Assegura que existeixen les capçaleres afegides amb el temps (compatibilitat amb l'historial existent)
   if (sheet.getRange(1, 9).getValue() !== "Temps repte 5") {
@@ -162,4 +196,63 @@ function registrarRespostaFinal(body) {
     tr[4] || "",
     body.numGrup || ""
   ]);
+}
+
+/**
+ * Neteja "Estat en viu": qualsevol sessió que no estigui ja "Acabat" i porti
+ * més de HORES_CADUCITAT hores sense actualitzar-se es considera abandonada
+ * (el dispositiu es va tancar, es va perdre la connexió, etc. abans de
+ * prémer el botó de finalitzar). La marquem com a "Acabat", la traslladem a
+ * "Sessions finalitzades" i l'eliminem d'"Estat en viu", perquè el marcador
+ * només mostri partides realment actives.
+ *
+ * Pensada per executar-se automàticament cada hora (veure installarTriggerNeteja).
+ * No fa res si no hi ha cap sessió caducada.
+ */
+function netejarSessionsCaducades() {
+  const sheet = obtenirOCrearFullEstat();
+  const valors = sheet.getDataRange().getValues();
+  if (valors.length < 2) return; // només capçalera, no hi ha files
+
+  const capçaleres = valors[0];
+  const ara = new Date();
+  const limitMs = HORES_CADUCITAT * 60 * 60 * 1000;
+
+  // Recorrem de baix a dalt perquè deleteRow desplaça la resta de files cap amunt.
+  for (let i = valors.length - 1; i >= 1; i--) {
+    const fila = valors[i];
+    const obj = {};
+    capçaleres.forEach(function (h, j) { obj[h] = fila[j]; });
+
+    if (obj.estat === "Acabat") continue;
+
+    const actualitzat = obj.actualitzat instanceof Date ? obj.actualitzat : new Date(obj.actualitzat);
+    if (isNaN(actualitzat.getTime()) || (ara - actualitzat) < limitMs) continue;
+
+    registrarRespostaFinal({
+      escola: obj.escola,
+      grup: obj.grup,
+      tempsTotal: obj.tempsTotal,
+      tempsReptes: ["", "", "", "", ""], // no sabem el detall per repte d'una sessió abandonada
+      numGrup: obj.numGrup
+    });
+
+    sheet.deleteRow(i + 1); // +1: valors[0] és la capçalera (fila 1 del full)
+  }
+}
+
+/**
+ * Registra el trigger horari que crida netejarSessionsCaducades(). Cal
+ * executar aquesta funció UN SOL COP a mà des de l'editor d'Apps Script
+ * (desplegable de funcions > installarTriggerNeteja > Executar) — no es fa
+ * sola en enganxar el codi. Si es torna a executar per error, no duplica el
+ * trigger: primer esborra els que ja existien per aquesta funció.
+ */
+function installarTriggerNeteja() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "netejarSessionsCaducades") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger("netejarSessionsCaducades").timeBased().everyHours(1).create();
 }
