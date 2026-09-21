@@ -23,8 +23,7 @@
  * registra la neteja horària; no cal tornar a fer-ho en futures edicions.
  */
 
-const SHEET_RESPOSTES = "Sessions finalitzades"; // pestanya on queden totes les partides acabades (abans "Respostes al formulari 1")
-const SHEET_RESPOSTES_NOM_ANTIC = "Respostes al formulari 1"; // nom antic, per migrar automàticament fulls existents
+const SHEET_RESPOSTES = "Sessions finalitzades"; // pestanya on queden totes les partides acabades
 const SHEET_ESTAT = "Estat en viu";
 const HORES_CADUCITAT = 4; // hores sense actualitzar-se a partir de les quals una sessió es considera abandonada
 
@@ -45,15 +44,6 @@ function doGet(e) {
   return llegirEstat();
 }
 
-// Es manté per compatibilitat, encara que el joc ja no l'utilitza.
-function doPost(e) {
-  try {
-    return gestionarEvent(JSON.parse(e.postData.contents));
-  } catch (err) {
-    return respondreJSON({ ok: false, error: String(err) });
-  }
-}
-
 function gestionarEvent(dadesOriginals) {
   try {
     const dades = Object.assign({}, dadesOriginals, {
@@ -65,8 +55,12 @@ function gestionarEvent(dadesOriginals) {
     if (dades.action === "progress") {
       registrarProgres(dades);
     } else if (dades.action === "finish") {
-      registrarProgres(Object.assign({}, dades, { estat: "Acabat" }));
+      // La partida s'acaba (repte 5 superat o botó "Acaba la micro:bitada!"):
+      // el resultat final queda escrit a "Sessions finalitzades" i la fila
+      // d'aquesta sessió desapareix d'"Estat en viu", perquè aquesta pestanya
+      // només mostri partides realment en curs.
       registrarRespostaFinal(dades);
+      eliminarDeEstatEnViu(dades.sessionId);
     } else {
       return respondreJSON({ ok: false, error: "acció desconeguda: " + dades.action });
     }
@@ -141,23 +135,30 @@ function registrarProgres(body) {
 }
 
 /**
- * Retorna el full "Sessions finalitzades", creant-lo o migrant-lo si cal:
- * - Si ja existeix amb el nom nou, el fa servir directament.
- * - Si encara existeix amb el nom antic ("Respostes al formulari 1"), el
- *   renombra (no en creem un de nou, per no perdre l'historial que ja hi hagi).
- * - Si no existeix cap dels dos (full nou, sense Form), el crea amb les
- *   capçaleres correctes.
+ * Elimina d'"Estat en viu" la fila d'aquesta sessió (si hi és). Es fa servir
+ * quan una partida acaba, perquè aquesta pestanya només reflecteixi partides
+ * realment en curs; el resultat final ja ha quedat escrit a
+ * "Sessions finalitzades" abans de cridar aquesta funció.
+ */
+function eliminarDeEstatEnViu(sessionId) {
+  const sheet = obtenirOCrearFullEstat();
+  const dades = sheet.getDataRange().getValues();
+  for (let i = 1; i < dades.length; i++) {
+    if (dades[i][0] === sessionId) {
+      sheet.deleteRow(i + 1); // +1: dades[0] és la capçalera (fila 1 del full)
+      break;
+    }
+  }
+}
+
+/**
+ * Retorna el full "Sessions finalitzades", creant-lo amb les capçaleres
+ * correctes si encara no existeix.
  */
 function obtenirFullRespostes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_RESPOSTES);
   if (sheet) return sheet;
-
-  const fullAntic = ss.getSheetByName(SHEET_RESPOSTES_NOM_ANTIC);
-  if (fullAntic) {
-    fullAntic.setName(SHEET_RESPOSTES);
-    return fullAntic;
-  }
 
   sheet = ss.insertSheet(SHEET_RESPOSTES);
   sheet.appendRow([
@@ -169,9 +170,8 @@ function obtenirFullRespostes() {
 }
 
 /**
- * Afegeix la fila final a la mateixa pestanya on abans queien les respostes del Form,
- * amb el mateix format (Marca de temps, Escola, Grup, Temps, Temps repte 1..5),
- * perquè tot el que ja tinguis fet amb aquestes dades (taules dinàmiques, etc.) segueixi funcionant.
+ * Afegeix la fila final a "Sessions finalitzades" amb el resultat de la partida
+ * (Marca de temps, Escola, Grup, Temps, Temps repte 1..5, Número de grup).
  */
 function registrarRespostaFinal(body) {
   const sheet = obtenirFullRespostes();
@@ -183,13 +183,13 @@ function registrarRespostaFinal(body) {
   if (sheet.getRange(1, 10).getValue() !== "Número de grup") {
     sheet.getRange(1, 10).setValue("Número de grup");
   }
-  // Mateix motiu que a "Estat en viu": Temps i Temps repte 1-5 (columnes D-I)
-  // són text "mm:ss", no hores reals. Formatem cada columna per separat (no
-  // "D:I" de cop): en aquest full -vinculat a un Google Form- un rang que
-  // abasta MÉS D'UNA columna sencera és exactament el que provoca l'error
-  // "Fes una selecció dins d'una sola columna per dur a terme accions al
-  // nivell de columna." Una columna cada vegada ("F:F", igual que fem a
-  // "Estat en viu", que mai ha donat aquest error) no té aquesta restricció.
+  // Temps i Temps repte 1-5 (columnes D-I) són text "mm:ss", no hores reals.
+  // Formatem cada columna per separat (no "D:I" de cop): en aquest full
+  // -vinculat en origen a un Google Form- un rang que abasta MÉS D'UNA
+  // columna sencera és exactament el que provoca l'error "Fes una selecció
+  // dins d'una sola columna per dur a terme accions al nivell de columna."
+  // Una columna cada vegada ("F:F", igual que fem a "Estat en viu", que mai
+  // ha donat aquest error) no té aquesta restricció.
   ["D:D", "E:E", "F:F", "G:G", "H:H", "I:I"].forEach(function (col) {
     sheet.getRange(col).setNumberFormat("@");
   });
@@ -208,21 +208,19 @@ function registrarRespostaFinal(body) {
     body.numGrup || ""
   ];
   // NO fem servir sheet.appendRow() aquí: aquesta pestanya prové d'un Google
-  // Form (abans es deia "Respostes al formulari 1") i els fulls vinculats a
-  // un Form restringeixen accions "a nivell de columna"; appendRow() hi
-  // topa quan la fila té més columnes que el Form original (li vam afegir
-  // "Temps repte 1-5" i "Número de grup" nosaltres més tard). Escrivint
-  // directament sobre un rang explícit evitem el conflicte.
+  // Form i els fulls vinculats a un Form restringeixen accions "a nivell de
+  // columna"; appendRow() hi topa quan la fila té més columnes que el Form
+  // original (li vam afegir "Temps repte 1-5" i "Número de grup" nosaltres
+  // més tard). Escrivint directament sobre un rang explícit evitem el conflicte.
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, novaFila.length).setValues([novaFila]);
 }
 
 /**
- * Neteja "Estat en viu": qualsevol sessió que no estigui ja "Acabat" i porti
- * més de HORES_CADUCITAT hores sense actualitzar-se es considera abandonada
- * (el dispositiu es va tancar, es va perdre la connexió, etc. abans de
- * prémer el botó de finalitzar). La marquem com a "Acabat", la traslladem a
- * "Sessions finalitzades" i l'eliminem d'"Estat en viu", perquè el marcador
- * només mostri partides realment actives.
+ * Neteja "Estat en viu": qualsevol sessió que porti més de HORES_CADUCITAT
+ * hores sense actualitzar-se es considera abandonada (el dispositiu es va
+ * tancar, es va perdre la connexió, etc. abans de prémer el botó de
+ * finalitzar). La traslladem a "Sessions finalitzades" i l'eliminem
+ * d'"Estat en viu", perquè el marcador només mostri partides realment actives.
  *
  * Pensada per executar-se automàticament cada hora (veure installarTriggerNeteja).
  * No fa res si no hi ha cap sessió caducada.
@@ -241,8 +239,6 @@ function netejarSessionsCaducades() {
     const fila = valors[i];
     const obj = {};
     capçaleres.forEach(function (h, j) { obj[h] = fila[j]; });
-
-    if (obj.estat === "Acabat") continue;
 
     const actualitzat = obj.actualitzat instanceof Date ? obj.actualitzat : new Date(obj.actualitzat);
     if (isNaN(actualitzat.getTime()) || (ara - actualitzat) < limitMs) continue;
