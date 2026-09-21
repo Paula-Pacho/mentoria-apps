@@ -38,7 +38,25 @@
    - `https://paula-pacho.github.io/mentoria-apps/microbitada26/microbitada.html`
    - `https://paula-pacho.github.io/mentoria-apps/microbitada26/marcador.html`
 
-**Pendiente del lado Apps Script:** el cambio del punto 2 (columna `numGrup`) está en el archivo de referencia `microbitada26/apps-script/Code.gs`, pero **hay que copiarlo también al editor de Apps Script real y redesplegar ("Nova versió")** para que surta efecto en producción — igual que cualquier cambio anterior de ese archivo.
+**Landing page (`index.html`, en la raíz del repo):** creada para el dominio propio `microbitada.cat` (redirigido al repo). Tres botones: "Micro:bitada — Alumnes" (a `microbitada26/microbitada.html`), "Micro:bitada — Docents" (desactivado, "Properament", pendiente de construir — ver más abajo) y "Marcador en viu" (a `microbitada26/marcador.html`), más un enlace directo al codi inicial del Repte 5 a MakeCode. Usa la misma paleta corregida (Fase 3) que `microbitada.html`.
+
+**Fixes en `marcador.html`:**
+- El texto `1899-12-30T...Z` que aparecía junto a "Repte X de 5" era un bug de Google Sheets: un texto "mm:ss" se autodetectaba como hora real. Solucionado por partida doble: `setNumberFormat("@")` en el Apps Script (fuerza texto) + una guarda cliente en `formatTemps()` que solo muestra el valor si tiene pinta de "mm:ss" válido.
+- El número de grupo (`numGrup`) ahora se muestra también en el marcador, junto al nombre del equipo (`Grup X — Nom`).
+
+**Actualizaciones del 21/09/2026 (batch de 9 tareas pedidas por el usuario):**
+1. **Peu de pàgina con logos institucionales y licencia**, en `index.html`, `microbitada.html` y `marcador.html`: logos de financiación (Ministeri d'Educació + Generalitat de Catalunya) y de Mentories 4.0 (en `assets/logos/`), más el texto de licencia CC BY-NC-SA 4.0.
+2. **Desplegable de nombre de componentes del grupo** (1-8) sustituye a la antigua entrada de miembros uno a uno en `microbitada.html`: en la práctica cada dispositivo es un único grupo durante toda la actividad, así que ese flujo de "añadir participante" no aportaba nada. El valor se envía como `numComponents` en cada evento, pensado para sumarlo más adelante en el recuento de participantes del apartado docente.
+3. **Nuevo flujo del botón rojo "Acaba la micro:bitada!"** (corte manual/emergencia): antes reutilizaba `endGroupSession()` (pensada para pasar al siguiente grupo del mismo dispositivo). Ahora, como cada dispositivo es un único grupo, `finishEmergency()` simplemente muestra la imagen final (21), envía el evento `finish` (estat pasa a "Acabat") y deja un botón para volver a `index.html`. El flujo normal (llegar al final y pulsar "ACABAR GIMCANA") no se ha tocado.
+4. **Limpieza automática de "Estat en viu" + renombrado a "Sessions finalitzades"** (`Code.gs`): cualquier sesión que lleve más de 4 horas sin actualizarse y no esté ya "Acabat" se considera abandonada, se marca como acabada, se traslada a la pestaña histórica (renombrada de "Respostes al formulari 1" a "Sessions finalitzades", con migración automática del nombre antiguo si existe) y desaparece de "Estat en viu". Requiere un paso manual **una sola vez**: ejecutar `installarTriggerNeteja` desde el editor de Apps Script para registrar el trigger horario (documentado en la cabecera de `Code.gs`).
+
+**Pendiente de este mismo batch, bloqueado por datos que faltan del usuario:**
+- Color de fondo y ampliación al máximo de las imágenes de los retos (pensado para Chromebook) — falta que el usuario indique el color deseado.
+- Niveles de dificultad (desplegable 1/2 al dar de alta el grupo) + renombrado de imágenes al esquema `R1_1`, `R1_2`, `R1_3`, `R1_3_N2`... — falta confirmar el nombre de las 5 imágenes que no son de un repte (portada, resum reptes, abans de començar, final victòria, final amb botó) y las imágenes reales del nivel 2.
+- Página "Micro:bitada — Docents": contador de total de participantes (los datos ya se capturan vía `numComponents`, punto 2) y contraseña de acceso — falta que el usuario indique la contraseña deseada (aviso pendiente: al ser una contraseña en el propio HTML/JS servido al navegador, es solo un filtro disuasorio, no seguridad real).
+- Sistema de códigos de sesión tipo Kahoot (alta de centro/grupo-clase con código en vez de nombre de escuela, para poder jugar dos grupos a la vez en el mismo centro): explícitamente aplazado por el usuario a una sesión dedicada aparte.
+
+**Pendiente del lado Apps Script:** todos los cambios de `Code.gs` (columna `numGrup`, renombrado de pestaña + limpieza automática) están en el archivo de referencia `microbitada26/apps-script/Code.gs`, pero **hay que copiarlos también al editor de Apps Script real y redesplegar ("Nova versió")** para que surtan efecto en producción — y, la primera vez que se enganche esta versión, ejecutar además `installarTriggerNeteja` una sola vez (ver más arriba).
 
 Nota operativa: los commits de este trabajo viven en el repo `mentoria-apps` (GitHub, `Paula-Pacho/mentoria-apps`, público); el usuario los sube con `git push` desde su propio Mac, ya que esta sesión no tiene acceso de red a GitHub.
 
@@ -57,12 +75,11 @@ Es una gimcana digital para el evento "micro:bitada Penedès 2026": los grupos d
 - Sin manejo de errores de carga de imagen ni precarga de la siguiente imagen.
 - Las claves de respuesta (`GROUP_KEYS`) son visibles en el código fuente servido al navegador: cualquier alumno con las herramientas de desarrollador puede leer las soluciones. Aceptable para una gimcana escolar, pero vale la pena tenerlo presente.
 - `marcador.html` (pantalla del proyector) tiene su propia copia de la misma paleta de colores y no se ha auditado su contraste.
-- La fila de "Estat en viu" nunca se borra sola (solo se actualiza in situ por `sessionId`); el filtro de 4h de `marcador.html` es solo de visualización. Si se quiere una limpieza real de cara a repetir el evento otro día, está pendiente de construir.
+- ~~La fila de "Estat en viu" nunca se borra sola~~ — resuelto el 21/09/2026: `netejarSessionsCaducades()` la marca como acabada y la traslada al histórico pasadas 4h sin actividad (ver arriba). El filtro de 4h de `marcador.html` se mantiene como red de seguridad adicional, ya redundante en la mayoría de casos.
 
 ## Próximos pasos
 
-Ninguna fase pendiente de las 4 solicitadas originalmente (robustez, seguridad, datos en tiempo real, accesibilidad), ni del ajuste de numeración manual tras la prueba real. Opcional, no bloqueante:
+Ninguna fase pendiente de las 4 solicitadas originalmente (robustez, seguridad, datos en tiempo real, accesibilidad), ni del ajuste de numeración manual tras la prueba real. Del batch del 21/09/2026 quedan pendientes los puntos listados arriba (color de fondo/tamaño de imágenes, niveles de dificultad, página Docents con contador y contraseña, códigos de sesión tipo Kahoot). Opcional, no bloqueante:
 - Descripciones `alt` reales para las 21 imágenes de pistas (contenido a redactar por la organización).
 - `aria-label` por celda en la cuadrícula 5x5, si se quiere que el reto de patrón sea resoluble sin ver la pantalla.
-- Manejo de errores de carga de imagen; revisar contraste de `marcador.html`.
-- Limpieza/reinicio de "Estat en viu" entre jornadas del evento, si hace falta.
+- Manejo de errores de carga de imagen; revisar/actualizar la paleta de `marcador.html` (todavía usa los valores de contraste anteriores a la Fase 3).
