@@ -34,7 +34,11 @@ const HORES_CADUCITAT = 4; // hores sense actualitzar-se a partir de les quals u
 // Apps Script Web App no sempre porten la capçalera CORS que el navegador exigeix
 // per poder-ne llegir la resposta, encara que el POST s'executi bé al servidor.)
 function doGet(e) {
-  const params = e.parameter;
+  // e pot ser undefined si aquesta funció es prova manualment des de l'editor
+  // (botó "Executar" amb doGet seleccionat): aleshores no hi ha cap petició
+  // HTTP real i Apps Script no passa cap event. Ho protegim perquè aquesta
+  // prova manual no aparegui com un error a "Execucions".
+  const params = (e && e.parameter) || {};
   if (params.action === "progress" || params.action === "finish") {
     return gestionarEvent(params);
   }
