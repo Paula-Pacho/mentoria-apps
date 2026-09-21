@@ -1,10 +1,19 @@
 <!DOCTYPE html>
+<!--
+  INDEX.HTML — Pàgina d'inici de la micro:bitada
+  ================================================
+  És la primera pantalla que es veu en entrar a microbitada.cat.
+  Només mostra un menú amb els enllaços a les altres pàgines del
+  projecte (el joc, el marcador i, properament, la zona docents).
+  No té cap lògica: és HTML i CSS purs, sense JavaScript.
+-->
 <html lang="ca">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>micro:bitada Penedès 2026</title>
 <style>
+    /* Colors generals i estils dels botons/targeta del menú principal */
     :root { --primary: #2275d7; --secondary: #f39c12; --danger: #df2e1b; --success: #2ecc71; --dark: #2c3e50; }
     * { box-sizing: border-box; }
     body {
@@ -79,6 +88,7 @@
     <h1>micro:bitada Penedès 2026</h1>
     <p class="subtitle">Selecciona on vols anar</p>
 
+    <!-- Menú principal: els botons d'accés a cada pàgina del projecte -->
     <nav aria-label="Accés a les eines de la micro:bitada">
         <a class="btn btn-alumnes" href="microbitada26/microbitada.html">Micro:bitada — Alumnes</a>
         <button type="button" class="btn btn-docents" disabled aria-label="Micro:bitada — Docents, properament disponible">
@@ -89,6 +99,7 @@
         <a class="btn btn-extern" href="https://makecode.microbit.org/S17832-99665-57486-11507" target="_blank" rel="noopener">Codi inicial Repte 5 — Alumnat</a>
     </nav>
 
+<!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
 <footer class="site-footer">
     <img class="footer-logos-financament" src="assets/logos/Logos-4.0.png" alt="Programa finançat pel Ministeri d’Educació, Formació Professional i Esports, amb el suport de la Generalitat de Catalunya">
     <img class="footer-logo-mentories" src="assets/logos/Logo-Mentories-4.0-1.png" alt="Logo Mentories 4.0">
