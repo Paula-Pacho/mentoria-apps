@@ -105,6 +105,14 @@
                 <option value="8">8</option>
             </select>
         </div>
+        <div id="group-level-zone">
+            <label for="group-level-select">Nivell de dificultat</label>
+            <select id="group-level-select">
+                <option value="" selected disabled>Selecciona el nivell...</option>
+                <option value="1">Nivell 1</option>
+                <option value="2">Nivell 2</option>
+            </select>
+        </div>
         <label for="main-input" class="sr-only">Nom de l'equip</label>
         <input type="text" id="main-input" placeholder="Ex: Els Súpers">
         <div style="margin-top:15px;">
@@ -114,7 +122,14 @@
 
     <div id="step-start" class="hidden">
         <h2>Preparats, <span id="current-group-name"></span>?</h2>
-        <button class="btn-start" onclick="initChallenge()">START</button>
+
+        <div class="viewer-container"><img src="" id="intro-img" class="viewer-img" alt=""></div>
+
+        <div class="nav-buttons">
+            <button id="intro-btn-prev" class="btn-nav" onclick="introNav(-1)">⬅ Enrere</button>
+            <button id="intro-btn-next" class="btn-nav" onclick="introNav(1)">Endavant ➡</button>
+            <button id="intro-btn-start" class="btn-start hidden" onclick="initChallenge()">START</button>
+        </div>
     </div>
 
     <div id="step-challenge" class="hidden">
@@ -187,30 +202,26 @@
         "5": { c3: "143", p1: [6,7,18], word: "ROBOTS", c4: "3679", p2: [0,2,4,6,8,24] }
     };
 
-    // Nombre total d'imatges de la seqüència (portada + resum + abans de
-    // començar + les imatges de cada repte + les 2 imatges finals).
-    const TOTAL_IMAGES = 21;
+    // Imatges que es veuen abans de prémer START (a la pantalla "Preparats?"),
+    // amb el cronòmetre encara aturat.
+    const INTRO_IMAGES = ['P1', 'P2', 'P3'];
 
-    // Quantes imatges reals s'han vist ABANS que aparegui cada candado,
-    // comptant totes des de la imatge 1. Per canviar quantes imatges té
-    // un repte, només cal editar aquest número — la resta es calcula sol,
-    // no cal tocar res més.
-    const IMAGES_BEFORE_LOCK = [6, 9, 12, 15, 19]; // repte 1..5
-
-    const LOCK_DEFS = [
-        { type: 'code',   key: 'c4',   title: "Codi de 4 xifres" },
-        { type: 'matrix', key: 'p1',   title: "Patró 5x5 (1)" },
-        { type: 'code',   key: 'word', title: "Paraula de 6 lletres" },
-        { type: 'code',   key: 'c3',   title: "Codi de 3 xifres" },
-        { type: 'matrix', key: 'p2',   title: "Patró 5x5 Final" }
+    // Cada repte porta la seva pròpia llista d'imatges (es veuen abans que
+    // aparegui el seu candado). Per canviar quantes imatges té un repte,
+    // només cal afegir/treure noms d'aquesta llista — no cal tocar res més.
+    // Si el grup ha triat "Nivell 2", loadRepteImage() prova primer la variant
+    // "<nom>_N2" i, si no existeix, cau a la imatge normal (Nivell 1).
+    const GAME_FLOW = [
+        { images: ['R1_1', 'R1_2', 'R1_3'],          type: 'code',   key: 'c4',   title: "Codi de 4 xifres" },
+        { images: ['R2_1', 'R2_2', 'R2_3'],          type: 'matrix', key: 'p1',   title: "Patró 5x5 (1)" },
+        { images: ['R3_1', 'R3_2', 'R3_3'],          type: 'code',   key: 'word', title: "Paraula de 6 lletres" },
+        { images: ['R4_1', 'R4_2', 'R4_3'],          type: 'code',   key: 'c3',   title: "Codi de 3 xifres" },
+        { images: ['R5_1', 'R5_2', 'R5_3', 'R5_4'],  type: 'matrix', key: 'p2',   title: "Patró 5x5 Final" }
     ];
 
-    // imgTrigger = posició real de navegació del candado: cal sumar-hi l'índex
-    // (0..4) perquè cada candado anterior ja ha "ocupat" un pas de navegació.
-    const GAME_FLOW = IMAGES_BEFORE_LOCK.map((n, i) => Object.assign({ imgTrigger: n + i }, LOCK_DEFS[i]));
-
-    let school = "", allGroups = [], tempGroup = { name: "", size: "" };
-    let activeGroupIdx = 0, currentImgIdx = 0, timerInterval, startTime, currentGroupNum = "1";
+    let school = "", allGroups = [], tempGroup = { name: "", size: "", level: "" };
+    let activeGroupIdx = 0, introIdx = 0, activeReptoIdx = 0, imgWithinRepto = 0;
+    let timerInterval, startTime, currentGroupNum = "1";
     let tempsReptes = ["", "", "", "", ""];
     let groupSessionId = "";
 
@@ -224,6 +235,7 @@
             grup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].name : "",
             numGrup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].number : "",
             numComponents: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].size : "",
+            nivell: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].level : "",
             totalReptes: GAME_FLOW.length,
             tempsTotal: document.getElementById('display-timer').innerText
         }, extra);
@@ -319,9 +331,15 @@
             alert("Selecciona el nombre de components del grup abans de continuar.");
             return;
         }
+        const levelSelect = document.getElementById('group-level-select');
+        if (!levelSelect.value) {
+            alert("Selecciona el nivell abans de continuar.");
+            return;
+        }
         tempGroup.number = numeroSelect.value;
         tempGroup.name = val;
         tempGroup.size = sizeSelect.value;
+        tempGroup.level = levelSelect.value;
         allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
 
         document.getElementById('step-groups').classList.add('hidden');
@@ -336,12 +354,33 @@
         // manualment el/la docent en desplegable (veure processLogic), perquè
         // cada dispositiu s'assigna a un grup concret amb el seu propi material.
         currentGroupNum = allGroups[idx].number;
+
+        introIdx = 0;
+        updateIntroViewer();
+    }
+
+    // Visor de les imatges d'introducció (P1-P3), abans de prémer START:
+    // el cronòmetre encara no s'ha engegat. A la darrera imatge (P3), "Endavant"
+    // deixa pas al botó START, que és el que realment engega el cronòmetre.
+    function updateIntroViewer() {
+        document.getElementById('intro-img').src = `${BASE_URL}/${INTRO_IMAGES[introIdx]}.jpg`;
+        document.getElementById('intro-btn-prev').style.visibility = (introIdx === 0) ? "hidden" : "visible";
+
+        const esLaDarrera = introIdx === INTRO_IMAGES.length - 1;
+        document.getElementById('intro-btn-next').classList.toggle('hidden', esLaDarrera);
+        document.getElementById('intro-btn-start').classList.toggle('hidden', !esLaDarrera);
+    }
+
+    function introNav(dir) {
+        introIdx = Math.max(0, Math.min(INTRO_IMAGES.length - 1, introIdx + dir));
+        updateIntroViewer();
     }
 
     function initChallenge() {
         document.getElementById('step-start').classList.add('hidden');
         document.getElementById('step-challenge').classList.remove('hidden');
-        currentImgIdx = 0;
+        activeReptoIdx = 0;
+        imgWithinRepto = 0;
         GAME_FLOW.forEach(f => f.passed = false);
         tempsReptes = ["", "", "", "", ""];
         groupSessionId = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
@@ -363,7 +402,7 @@
     function saveProgress() {
         const data = {
             school, allGroups, tempGroup, activeGroupIdx,
-            currentImgIdx, currentGroupNum, startTime,
+            activeReptoIdx, imgWithinRepto, currentGroupNum, startTime,
             tempsReptes, groupSessionId,
             passedFlags: GAME_FLOW.map(f => !!f.passed)
         };
@@ -395,7 +434,8 @@
         allGroups = saved.allGroups;
         tempGroup = saved.tempGroup;
         activeGroupIdx = saved.activeGroupIdx;
-        currentImgIdx = saved.currentImgIdx;
+        activeReptoIdx = saved.activeReptoIdx;
+        imgWithinRepto = saved.imgWithinRepto;
         currentGroupNum = saved.currentGroupNum;
         startTime = saved.startTime;
         tempsReptes = saved.tempsReptes;
@@ -413,15 +453,35 @@
         updateTimer();
     }
 
+    // Carrega la imatge d'un repte, amb variant de Nivell 2 si el grup l'ha triat:
+    // prova primer "<nom>_N2.jpg" i, si no existeix (l'organització no l'ha creat
+    // per a aquesta imatge en concret), cau automàticament a la imatge normal.
+    function loadRepteImage(baseName) {
+        const img = document.getElementById('current-img');
+        const esNivell2 = allGroups[activeGroupIdx] && allGroups[activeGroupIdx].level === "2";
+
+        if(esNivell2) {
+            img.onerror = function () {
+                img.onerror = null;
+                img.src = `${BASE_URL}/${baseName}.jpg`;
+            };
+            img.src = `${BASE_URL}/${baseName}_N2.jpg`;
+        } else {
+            img.onerror = null;
+            img.src = `${BASE_URL}/${baseName}.jpg`;
+        }
+    }
+
     function updateViewer() {
-        const lock = GAME_FLOW.find(f => f.imgTrigger === currentImgIdx);
-        
-        if(lock && !lock.passed) {
+        const repte = GAME_FLOW[activeReptoIdx];
+
+        if(imgWithinRepto >= repte.images.length) {
+            // S'han vist totes les imatges d'aquest repte: toca el candado.
             document.getElementById('viewer-zone').classList.add('hidden');
             document.getElementById('lock-zone').classList.remove('hidden');
-            document.getElementById('lock-title').innerText = "🔒 " + lock.title;
-            
-            if(lock.type === 'matrix') {
+            document.getElementById('lock-title').innerText = "🔒 " + repte.title;
+
+            if(repte.type === 'matrix') {
                 document.getElementById('ui-code-container').classList.add('hidden');
                 document.getElementById('ui-matrix-container').classList.remove('hidden');
                 document.querySelectorAll('.cell').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
@@ -433,61 +493,62 @@
         } else {
             document.getElementById('viewer-zone').classList.remove('hidden');
             document.getElementById('lock-zone').classList.add('hidden');
-            
-            let realImgIdx = currentImgIdx;
-            GAME_FLOW.forEach(f => { if(currentImgIdx > f.imgTrigger) realImgIdx--; });
-            
-            const imgNum = (realImgIdx + 1).toString().padStart(2,'0');
-            document.getElementById('current-img').src = `${BASE_URL}/${imgNum}.jpg`;
 
-            document.getElementById('btn-prev').style.visibility = (currentImgIdx === 0) ? "hidden" : "visible";
+            loadRepteImage(repte.images[imgWithinRepto]);
+
+            document.getElementById('btn-prev').style.visibility = (imgWithinRepto === 0) ? "hidden" : "visible";
         }
     }
 
     function validateLock() {
-        const lock = GAME_FLOW.find(f => f.imgTrigger === currentImgIdx);
+        const repte = GAME_FLOW[activeReptoIdx];
         const keys = GROUP_KEYS[currentGroupNum];
         let isCorrect = false;
 
-        if(lock.type === 'matrix') {
+        if(repte.type === 'matrix') {
             const selected = Array.from(document.querySelectorAll('.cell'))
                                   .map((c, i) => c.classList.contains('active') ? i : null)
                                   .filter(v => v !== null);
-            const target = keys[lock.key];
+            const target = keys[repte.key];
             isCorrect = selected.length === target.length && selected.every(v => target.includes(v));
         } else {
             const input = document.getElementById('code-input').value.trim().toUpperCase();
-            isCorrect = (input === keys[lock.key]);
+            isCorrect = (input === keys[repte.key]);
         }
 
         if(isCorrect) {
             const tActual = document.getElementById('display-timer').innerText;
-            const posicio = GAME_FLOW.indexOf(lock);
-            tempsReptes[posicio] = tActual;
+            tempsReptes[activeReptoIdx] = tActual;
 
-            lock.passed = true;
+            repte.passed = true;
 
-            if(posicio === GAME_FLOW.length - 1) {
+            if(activeReptoIdx === GAME_FLOW.length - 1) {
                 // Repte 5 (l'últim): resoldre'l acaba directament la gimcana, ja no cal
                 // navegar a més imatges ni prémer cap botó "ACABAR GIMCANA".
                 finishSession('F1');
             } else {
-                sendEvent('progress', { retoActual: posicio + 1 });
-                nav(1);
+                sendEvent('progress', { retoActual: activeReptoIdx + 1 });
+                activeReptoIdx++;
+                imgWithinRepto = 0;
+                updateViewer();
             }
         } else {
             alert("Incorrecte!");
         }
     }
 
+    // Navega entre les imatges del repte ACTUAL (no creua a l'anterior/següent
+    // repte). En arribar just després de la darrera imatge (imgWithinRepto ===
+    // repte.images.length) és quan updateViewer() mostra el candado.
     function nav(dir) {
-        currentImgIdx = Math.max(0, currentImgIdx + dir);
+        const maxIdx = GAME_FLOW[activeReptoIdx].images.length;
+        imgWithinRepto = Math.max(0, Math.min(maxIdx, imgWithinRepto + dir));
         updateViewer();
     }
 
     function confirmEndSession() {
         if(confirm("Segur que vols acabar la gimcana ara? S'enviaran les dades actuals.")) {
-            finishSession(TOTAL_IMAGES);
+            finishSession('F0');
         }
     }
 
@@ -498,8 +559,8 @@
     // Com que cada dispositiu és un únic grup durant tota la dinàmica, no cal
     // cap classificació entre grups: només mostrem el resum d'aquesta sessió.
     // imgFinal: quina imatge final es mostra ('F1' si s'ha completat el
-    // repte 5 amb normalitat, TOTAL_IMAGES si s'ha premut el botó vermell
-    // d'emergència mig joc).
+    // repte 5 amb normalitat, 'F0' si s'ha premut el botó vermell d'emergència
+    // mig joc).
     function finishSession(imgFinal) {
         clearInterval(timerInterval);
         clearProgress();
