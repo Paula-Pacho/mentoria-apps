@@ -72,12 +72,7 @@ function gestionarEvent(dadesOriginals) {
     }
     return respondreJSON({ ok: true });
   } catch (err) {
-    // Incloem l'stack trace a la resposta (no només el missatge) perquè
-    // aquest error, en estar capturat, MAI apareix com a "execució fallida"
-    // a "Execucions" -Apps Script només marca com a fallida una excepció que
-    // arriba sense capturar fins a doGet/doPost. Així el navegador ja mostra
-    // directament a quina línia ha fallat, sense haver de rebuscar als logs.
-    return respondreJSON({ ok: false, error: String(err), stack: (err && err.stack) || "(sense stack)" });
+    return respondreJSON({ ok: false, error: String(err) });
   }
 }
 
@@ -193,7 +188,7 @@ function registrarRespostaFinal(body) {
   sheet.getRange("D:I").setNumberFormat("@");
 
   const tr = body.tempsReptes || [];
-  sheet.appendRow([
+  const novaFila = [
     new Date(),
     body.escola,
     body.grup,
@@ -204,7 +199,14 @@ function registrarRespostaFinal(body) {
     tr[3] || "",
     tr[4] || "",
     body.numGrup || ""
-  ]);
+  ];
+  // NO fem servir sheet.appendRow() aquí: aquesta pestanya prové d'un Google
+  // Form (abans es deia "Respostes al formulari 1") i els fulls vinculats a
+  // un Form restringeixen accions "a nivell de columna"; appendRow() hi
+  // topa quan la fila té més columnes que el Form original (li vam afegir
+  // "Temps repte 1-5" i "Número de grup" nosaltres més tard). Escrivint
+  // directament sobre un rang explícit evitem el conflicte.
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, novaFila.length).setValues([novaFila]);
 }
 
 /**
