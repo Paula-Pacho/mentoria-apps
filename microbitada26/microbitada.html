@@ -146,6 +146,11 @@
         </div>
 
         <button id="btn-finish-all" class="btn-finish hidden" onclick="endGroupSession()">🏆 ACABAR GIMCANA 🏆</button>
+
+        <div id="emergency-end-zone" class="hidden">
+            <p style="color:var(--dark); font-weight:bold;">La micro:bitada s'ha finalitzat.</p>
+            <a class="btn-main" style="display:inline-block; text-decoration:none;" href="../index.html">Torna a la pàgina principal</a>
+        </div>
     </div>
 
     <div id="step-results" class="hidden">
@@ -512,8 +517,30 @@
 
     function confirmEndSession() {
         if(confirm("Segur que vols acabar la gimcana ara? S'enviaran les dades actuals.")) {
-            endGroupSession();
+            finishEmergency();
         }
+    }
+
+    // Tall manual (botó vermell "Acaba la micro:bitada!"): a diferència
+    // d'endGroupSession() -que passa al següent grup del mateix dispositiu o
+    // mostra la classificació-, aquí cada dispositiu és un únic grup, així
+    // que simplement mostrem la imatge final, avisem el servidor que la
+    // sessió ha acabat i deixem un botó per tornar a l'inici.
+    function finishEmergency() {
+        clearInterval(timerInterval);
+        clearProgress();
+
+        sendEvent('finish', {
+            retoActual: GAME_FLOW.filter(f => f.passed).length,
+            tempsReptes: tempsReptes
+        });
+
+        document.getElementById('current-img').src = `${BASE_URL}/${TOTAL_IMAGES}.jpg`;
+        document.querySelector('.btn-emergency').classList.add('hidden');
+        document.getElementById('navigation-zone').classList.add('hidden');
+        document.getElementById('lock-zone').classList.add('hidden');
+        document.getElementById('btn-finish-all').classList.add('hidden');
+        document.getElementById('emergency-end-zone').classList.remove('hidden');
     }
 
     function endGroupSession() {
