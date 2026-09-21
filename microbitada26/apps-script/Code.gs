@@ -92,10 +92,15 @@ function obtenirOCrearFullEstat() {
   let sheet = ss.getSheetByName(SHEET_ESTAT);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_ESTAT);
-    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat", "numGrup"]);
-  } else if (sheet.getRange(1, 9).getValue() !== "numGrup") {
-    // Compatibilitat amb fulls "Estat en viu" creats abans d'afegir aquesta columna
-    sheet.getRange(1, 9).setValue("numGrup");
+    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat", "numGrup", "nivell"]);
+  } else {
+    // Compatibilitat amb fulls "Estat en viu" creats abans d'afegir aquestes columnes
+    if (sheet.getRange(1, 9).getValue() !== "numGrup") {
+      sheet.getRange(1, 9).setValue("numGrup");
+    }
+    if (sheet.getRange(1, 10).getValue() !== "nivell") {
+      sheet.getRange(1, 10).setValue("nivell");
+    }
   }
   // tempsTotal (columna F) és un text "mm:ss" de temps transcorregut, no una
   // hora real. Sense forçar format de text, el Sheet l'interpreta com a hora
@@ -125,7 +130,8 @@ function registrarProgres(body) {
     body.tempsTotal,
     body.estat || "en joc",
     new Date(),
-    body.numGrup || ""
+    body.numGrup || "",
+    body.nivell || ""
   ];
   if (indexFila === -1) {
     sheet.appendRow(valorsFila);
@@ -164,7 +170,7 @@ function obtenirFullRespostes() {
   sheet.appendRow([
     "Marca de temps", "Escola", "Grup", "Temps total",
     "Temps repte 1", "Temps repte 2", "Temps repte 3", "Temps repte 4", "Temps repte 5",
-    "Número de grup"
+    "Número de grup", "Nivell"
   ]);
   return sheet;
 }
@@ -182,6 +188,9 @@ function registrarRespostaFinal(body) {
   }
   if (sheet.getRange(1, 10).getValue() !== "Número de grup") {
     sheet.getRange(1, 10).setValue("Número de grup");
+  }
+  if (sheet.getRange(1, 11).getValue() !== "Nivell") {
+    sheet.getRange(1, 11).setValue("Nivell");
   }
   // Temps i Temps repte 1-5 (columnes D-I) són text "mm:ss", no hores reals.
   // Formatem cada columna per separat (no "D:I" de cop): en aquest full
@@ -205,7 +214,8 @@ function registrarRespostaFinal(body) {
     tr[2] || "",
     tr[3] || "",
     tr[4] || "",
-    body.numGrup || ""
+    body.numGrup || "",
+    body.nivell || ""
   ];
   // NO fem servir sheet.appendRow() aquí: aquesta pestanya prové d'un Google
   // Form i els fulls vinculats a un Form restringeixen accions "a nivell de
@@ -248,7 +258,8 @@ function netejarSessionsCaducades() {
       grup: obj.grup,
       tempsTotal: obj.tempsTotal,
       tempsReptes: ["", "", "", "", ""], // no sabem el detall per repte d'una sessió abandonada
-      numGrup: obj.numGrup
+      numGrup: obj.numGrup,
+      nivell: obj.nivell
     });
 
     sheet.deleteRow(i + 1); // +1: valors[0] és la capçalera (fila 1 del full)
