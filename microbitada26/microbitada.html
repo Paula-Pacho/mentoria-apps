@@ -15,7 +15,6 @@
         .btn-main { background-color: var(--primary); color: white; }
         .btn-start { background-color: var(--success); color: var(--dark); font-size: 1.5rem; }
         .btn-nav { background-color: var(--dark); color: white; }
-        .btn-finish { background-color: var(--danger); color: white; width: 100%; margin-top: 10px; }
         .btn-emergency { background-color: var(--danger); color: white; margin-bottom: 15px; width: 100%; }
         .viewer-container { background: #000; border-radius: 10px; margin: 20px 0; overflow: hidden; min-height: 250px; display: flex; align-items: center; justify-content: center; }
         .viewer-img { width: 100%; height: auto; display: block; }
@@ -157,8 +156,6 @@
                 <button class="btn-nav" onclick="nav(-1)">⬅ Tornar a la pista</button>
             </div>
         </div>
-
-        <button id="btn-finish-all" class="btn-finish hidden" onclick="finishSession(TOTAL_IMAGES - 1)">🏆 ACABAR GIMCANA 🏆</button>
 
         <div id="final-actions-zone" class="hidden">
             <a class="btn-landing btn-tornar" href="https://microbitada.cat/index.html">Torna a la pàgina principal</a>
@@ -422,7 +419,6 @@
         if(lock && !lock.passed) {
             document.getElementById('viewer-zone').classList.add('hidden');
             document.getElementById('lock-zone').classList.remove('hidden');
-            document.getElementById('btn-finish-all').classList.add('hidden');
             document.getElementById('lock-title').innerText = "🔒 " + lock.title;
             
             if(lock.type === 'matrix') {
@@ -445,14 +441,6 @@
             document.getElementById('current-img').src = `${BASE_URL}/${imgNum}.jpg`;
 
             document.getElementById('btn-prev').style.visibility = (currentImgIdx === 0) ? "hidden" : "visible";
-
-            if(realImgIdx >= TOTAL_IMAGES - 1) {
-                document.getElementById('btn-next').classList.add('hidden');
-                document.getElementById('btn-finish-all').classList.remove('hidden');
-            } else {
-                document.getElementById('btn-next').classList.remove('hidden');
-                document.getElementById('btn-finish-all').classList.add('hidden');
-            }
         }
     }
 
@@ -478,8 +466,15 @@
             tempsReptes[posicio] = tActual;
 
             lock.passed = true;
-            sendEvent('progress', { retoActual: posicio + 1 });
-            nav(1);
+
+            if(posicio === GAME_FLOW.length - 1) {
+                // Repte 5 (l'últim): resoldre'l acaba directament la gimcana, ja no cal
+                // navegar a més imatges ni prémer cap botó "ACABAR GIMCANA".
+                finishSession('F1');
+            } else {
+                sendEvent('progress', { retoActual: posicio + 1 });
+                nav(1);
+            }
         } else {
             alert("Incorrecte!");
         }
@@ -497,12 +492,14 @@
     }
 
     // Pantalla final única: s'hi arriba tant si es prem el botó vermell
-    // "Acaba la micro:bitada!" (tall manual) com si s'arriba al final del
-    // recorregut i es prem "ACABAR GIMCANA" (final normal). Com que cada
-    // dispositiu és un únic grup durant tota la dinàmica, no cal cap
-    // classificació entre grups: només mostrem el resum d'aquesta sessió.
-    // imgFinal: quina imatge final es mostra (20 si s'ha completat el
-    // repte 5, 21 si s'ha premut el botó vermell d'emergència).
+    // "Acaba la micro:bitada!" (tall manual, a qualsevol punt del joc) com si
+    // es resol el repte 5 (validateLock() crida finishSession('F1') directament
+    // en lloc d'avançar a més imatges: ja no cal cap botó "ACABAR GIMCANA" a part).
+    // Com que cada dispositiu és un únic grup durant tota la dinàmica, no cal
+    // cap classificació entre grups: només mostrem el resum d'aquesta sessió.
+    // imgFinal: quina imatge final es mostra ('F1' si s'ha completat el
+    // repte 5 amb normalitat, TOTAL_IMAGES si s'ha premut el botó vermell
+    // d'emergència mig joc).
     function finishSession(imgFinal) {
         clearInterval(timerInterval);
         clearProgress();
@@ -527,7 +524,6 @@
         document.getElementById('viewer-zone').classList.remove('hidden');
         document.getElementById('navigation-zone').classList.add('hidden');
         document.getElementById('lock-zone').classList.add('hidden');
-        document.getElementById('btn-finish-all').classList.add('hidden');
         document.getElementById('session-summary-zone').classList.remove('hidden');
         document.getElementById('final-actions-zone').classList.remove('hidden');
     }
