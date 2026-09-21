@@ -81,11 +81,22 @@
                 <option value="5">5</option>
             </select>
         </div>
-        <label for="main-input" class="sr-only">Nom de l'equip, o d'un membre del grup</label>
-        <input type="text" id="main-input" placeholder="Ex: Els Súpers">
-        <div id="group-preview" class="hidden" style="text-align:left; background:#f8f9fa; padding:10px; margin:10px auto; width:80%;">
-            <strong>Membres:</strong> <ul id="list-members"></ul>
+        <div id="group-size-zone">
+            <label for="group-size-select">Nombre de components del grup</label>
+            <select id="group-size-select">
+                <option value="" selected disabled>Selecciona el nombre...</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+            </select>
         </div>
+        <label for="main-input" class="sr-only">Nom de l'equip</label>
+        <input type="text" id="main-input" placeholder="Ex: Els Súpers">
         <div style="margin-top:15px;">
             <button id="action-btn" class="btn-main" onclick="processLogic()">Següent</button>
             <button id="next-group-btn" class="hidden" style="background:var(--secondary); color:var(--dark)" onclick="resetForNewGroup()">Nou Grup</button>
@@ -181,7 +192,7 @@
     // (0..4) perquè cada candado anterior ja ha "ocupat" un pas de navegació.
     const GAME_FLOW = IMAGES_BEFORE_LOCK.map((n, i) => Object.assign({ imgTrigger: n + i }, LOCK_DEFS[i]));
 
-    let school = "", allGroups = [], tempGroup = { name: "", members: [] };
+    let school = "", allGroups = [], tempGroup = { name: "", size: "" };
     let activeGroupIdx = 0, currentImgIdx = 0, timerInterval, startTime, currentGroupNum = "1";
     let finalRanking = [], tempsReptes = ["", "", "", "", ""];
     let groupSessionId = "";
@@ -195,6 +206,7 @@
             escola: school,
             grup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].name : "",
             numGrup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].number : "",
+            numComponents: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].size : "",
             totalReptes: GAME_FLOW.length,
             tempsTotal: document.getElementById('display-timer').innerText
         }, extra);
@@ -276,37 +288,42 @@
         if (allGroups.length >= 5) return; // ja s'ha arribat al màxim de 5 grups
         const input = document.getElementById('main-input');
         const val = input.value.trim();
-        if(!val) return;
-        if(!tempGroup.name) {
-            const numeroSelect = document.getElementById('group-number-select');
-            if (!numeroSelect.value) {
-                alert("Selecciona el número de grup abans de continuar.");
-                return;
-            }
-            tempGroup.number = numeroSelect.value;
-            tempGroup.name = val;
-            document.getElementById('group-title').innerText = "Membres de: " + val;
-            document.getElementById('group-preview').classList.remove('hidden');
-            document.getElementById('group-number-zone').classList.add('hidden');
-        } else {
-            tempGroup.members.push(val);
-            let li = document.createElement('li'); li.textContent = val;
-            document.getElementById('list-members').appendChild(li);
+        if(!val) return alert("Escriu el nom de l'equip abans de continuar.");
+        const numeroSelect = document.getElementById('group-number-select');
+        if (!numeroSelect.value) {
+            alert("Selecciona el número de grup abans de continuar.");
+            return;
         }
-        input.value = "";
+        const sizeSelect = document.getElementById('group-size-select');
+        if (!sizeSelect.value) {
+            alert("Selecciona el nombre de components del grup abans de continuar.");
+            return;
+        }
+        tempGroup.number = numeroSelect.value;
+        tempGroup.name = val;
+        tempGroup.size = sizeSelect.value;
+
+        document.getElementById('group-title').innerText = "Grup registrat: " + val;
+        document.getElementById('action-btn').classList.add('hidden');
+        input.classList.add('hidden');
+        document.getElementById('group-number-zone').classList.add('hidden');
+        document.getElementById('group-size-zone').classList.add('hidden');
         document.getElementById('next-group-btn').classList.remove('hidden');
         document.getElementById('finalize-btn').classList.remove('hidden');
     }
 
     function resetForNewGroup() {
         allGroups.push(JSON.parse(JSON.stringify(tempGroup)));
-        tempGroup = { name: "", members: [] };
+        tempGroup = { name: "", size: "" };
         document.getElementById('group-title').innerText = "Nom del Grup";
-        document.getElementById('list-members').innerHTML = "";
-        document.getElementById('group-preview').classList.add('hidden');
+        document.getElementById('main-input').value = "";
+        document.getElementById('main-input').classList.remove('hidden');
+        document.getElementById('action-btn').classList.remove('hidden');
         document.getElementById('next-group-btn').classList.add('hidden');
         document.getElementById('group-number-select').value = "";
         document.getElementById('group-number-zone').classList.remove('hidden');
+        document.getElementById('group-size-select').value = "";
+        document.getElementById('group-size-zone').classList.remove('hidden');
 
         if (allGroups.length >= 5) {
             document.getElementById('main-input').classList.add('hidden');
