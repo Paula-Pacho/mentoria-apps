@@ -35,6 +35,13 @@
     .meta { display:flex; justify-content:space-between; font-size:.9rem; color:#666; }
     .buit { text-align:center; color:#888; margin-top:3rem; }
     .estat-final { color: var(--primary); font-weight:bold; }
+    /* Enllaç per tornar al menú principal */
+    .btn-tornar { display: inline-block; margin: 0 0 1rem; color: var(--dark); text-decoration: none; font-weight: bold; font-size: .95rem; }
+    .btn-tornar:hover { text-decoration: underline; }
+    /* Banner amb el codi de sessió: gran i vistós perquè l'alumnat el llegeixi
+       des de lluny (pantalla projectada) i el copiï per registrar el seu grup */
+    .banner-codi { max-width: 500px; margin: 0 auto 1.5rem; text-align: center; background: var(--dark); color: white; border-radius: 12px; padding: 1rem 1.5rem; font-size: 1.1rem; }
+    .banner-codi span { font-family: 'Courier New', monospace; font-weight: bold; font-size: 2rem; letter-spacing: .15em; color: var(--secondary); margin-left: .5rem; }
     /* Peu de pàgina (igual a totes les pàgines) */
     .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
     .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
@@ -46,11 +53,15 @@
 </head>
 <body>
 
+<a class="btn-tornar" href="../index.html">← Torna al menú principal</a>
 <h1>🤖 Marcador en viu — micro:bitada</h1>
 
-<!-- Filtre: cal escriure el nom exacte de l'escola per veure els seus grups -->
+<!-- Banner amb el codi de sessió, visible només quan el filtre s'ha introduït com a codi -->
+<div id="banner-codi" class="banner-codi hidden">Codi de sessió:<span id="banner-codi-valor"></span></div>
+
+<!-- Filtre: es pot escriure el codi de sessió (recomanat) o el nom exacte de l'escola -->
 <div class="filtre">
-    <input type="text" id="escola-input" placeholder="Escriu el nom de l'escola...">
+    <input type="text" id="escola-input" placeholder="Codi de sessió (o nom de l'escola)...">
     <button onclick="carregarAra()">Mostrar</button>
 </div>
 
@@ -79,16 +90,58 @@
 
     const params = new URLSearchParams(location.search);
     const inputEscola = document.getElementById('escola-input');
-    if (params.get('escola')) inputEscola.value = params.get('escola');
+    const bannerCodi = document.getElementById('banner-codi');
+    // Nom d'escola ja resolt (a partir d'un codi de sessió o escrit literalment) amb
+    // què es filtren les targetes; es recalcula cada cop que es prem "Mostrar".
+    let escolaFiltreActual = "";
+    if (params.get('codi')) {
+        inputEscola.value = params.get('codi');
+    } else if (params.get('escola')) {
+        inputEscola.value = params.get('escola');
+    }
 
     // ================================================================
     // GESTIÓ DEL FILTRE PER ESCOLA (es desa a la URL, per poder-la guardar com a preferida)
     // ================================================================
-    function carregarAra() {
-        // Deixem l'escola a la URL perquè es pugui desar com a preferit per aula/dispositiu
+    async function carregarAra() {
+        const valor = inputEscola.value.trim();
         const nova = new URL(location.href);
-        if (inputEscola.value.trim()) nova.searchParams.set('escola', inputEscola.value.trim());
-        else nova.searchParams.delete('escola');
+
+        if (!valor) {
+            escolaFiltreActual = "";
+            bannerCodi.classList.add('hidden');
+            nova.searchParams.delete('escola');
+            nova.searchParams.delete('codi');
+            history.replaceState(null, '', nova);
+            actualitza();
+            return;
+        }
+
+        // Primer provem si el que s'ha escrit és un codi de sessió (el que
+        // genera la pàgina Docents); si ho és, en resolem l'escola i mostrem
+        // el banner gran perquè l'alumnat el pugui llegir i copiar.
+        try {
+            const res = await fetch(`${APPS_SCRIPT_URL}?action=validarCodi&codi=${encodeURIComponent(valor)}`).then(r => r.json());
+            if (res.ok) {
+                escolaFiltreActual = res.escola;
+                document.getElementById('banner-codi-valor').textContent = valor.toUpperCase();
+                bannerCodi.classList.remove('hidden');
+                nova.searchParams.set('codi', valor.toUpperCase());
+                nova.searchParams.delete('escola');
+                history.replaceState(null, '', nova);
+                actualitza();
+                return;
+            }
+        } catch (err) {
+            // si falla la comprovació del codi, ho provem com a nom d'escola més avall
+        }
+
+        // No és un codi vàlid: ho tractem com el nom (literal) de l'escola,
+        // igual que fins ara.
+        escolaFiltreActual = valor;
+        bannerCodi.classList.add('hidden');
+        nova.searchParams.set('escola', valor);
+        nova.searchParams.delete('codi');
         history.replaceState(null, '', nova);
         actualitza();
     }
@@ -98,13 +151,13 @@
     // filtra pels d'aquesta escola i pinta una targeta per cada un
     // ================================================================
     async function actualitza() {
-        const escolaFiltre = inputEscola.value.trim().toLowerCase();
+        const escolaFiltre = escolaFiltreActual.trim().toLowerCase();
         const graella = document.getElementById('graella');
         const missatgeBuit = document.getElementById('missatge-buit');
 
         if (!escolaFiltre) {
             graella.innerHTML = "";
-            missatgeBuit.textContent = "Escriu el nom de l'escola i prem \"Mostrar\".";
+            missatgeBuit.textContent = "Escriu el codi de sessió (o el nom de l'escola) i prem \"Mostrar\".";
             missatgeBuit.classList.remove('hidden');
             return;
         }
