@@ -56,12 +56,7 @@
     .btn:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
     .btn-alumnes { background-color: var(--primary); color: white; }
     .btn-marcador { background-color: var(--success); color: var(--dark); }
-    .btn-docents {
-        background-color: #eee;
-        color: #888;
-        position: relative;
-    }
-    .btn-docents:disabled { cursor: not-allowed; }
+    .btn-docents { background-color: var(--secondary); color: white; }
     .btn-extern { background: white; color: var(--dark); border: 2px solid #ddd; margin-top: .5rem; font-size: .95rem; }
     .badge {
         display: block;
@@ -91,11 +86,9 @@
     <!-- Menú principal: els botons d'accés a cada pàgina del projecte -->
     <nav aria-label="Accés a les eines de la micro:bitada">
         <a class="btn btn-alumnes" href="microbitada26/microbitada.html">Micro:bitada — Alumnes</a>
-        <button type="button" class="btn btn-docents" disabled aria-label="Micro:bitada — Docents, properament disponible">
-            Micro:bitada — Docents
-            <span class="badge">Properament</span>
-        </button>
+        <a class="btn btn-docents" href="microbitada26/docents.html">Micro:bitada — Docents</a>
         <a class="btn btn-marcador" href="microbitada26/marcador.html">Marcador en viu</a>
+        <a class="btn btn-extern" href="resum.html">Resum de totes les sessions</a>
         <a class="btn btn-extern" href="https://makecode.microbit.org/S17832-99665-57486-11507" target="_blank" rel="noopener">Codi inicial Repte 5 — Alumnat</a>
     </nav>
 

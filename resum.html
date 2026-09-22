@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<!--
+  RESUM.HTML — Resum públic de totes les sessions jugades
+  ===========================================================
+  Pàgina pública (enllaçada des d'index.html) que mostra un buidatge
+  agregat del full "Sessions finalitzades": nombre d'escoles i grups
+  que han jugat, repartiment per curs (primària/secundària) i per
+  comarca, percentatge de reptes resolts i temps mitjà de partida.
+  Demana les dades ja calculades al backend (Code.gs, acció "resum")
+  i les dibuixa amb barres CSS senzilles, sense llibreries externes.
+-->
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>micro:bitada Penedès 2026 — Resum</title>
+<style>
+    :root { --primary: #2275d7; --secondary: #f39c12; --danger: #df2e1b; --success: #2ecc71; --dark: #2c3e50; }
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background-color: #e9ecef;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        padding: 20px;
+    }
+    .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 800px;
+    }
+    h1 { color: var(--dark); margin: 0 0 .25rem; font-size: 1.6rem; text-align: center; }
+    p.subtitle { color: #666; margin: 0 0 2rem; font-size: 1rem; text-align: center; }
+    h2 { color: var(--dark); font-size: 1.15rem; margin: 2rem 0 .8rem; border-bottom: 2px solid #eee; padding-bottom: .4rem; }
+    h2:first-of-type { margin-top: 0; }
+
+    /* Targetes amb els grans números (escoles, grups, temps mitjà...) */
+    .targetes { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .targeta { background: #f4f6f8; border-radius: 10px; padding: 1.2rem 1rem; text-align: center; }
+    .targeta .num { font-size: 2rem; font-weight: bold; color: var(--primary); line-height: 1; }
+    .targeta .etiqueta { font-size: .8rem; color: #666; margin-top: .4rem; }
+
+    /* Barres senzilles per als repartiments (curs, comarca) */
+    .barra-fila { margin-bottom: .6rem; }
+    .barra-fila .barra-etiqueta { display: flex; justify-content: space-between; font-size: .85rem; color: var(--dark); margin-bottom: 2px; }
+    .barra-fons { background: #eee; border-radius: 6px; height: 14px; overflow: hidden; }
+    .barra-plena { background: var(--primary); height: 100%; border-radius: 6px; }
+
+    #carregant, #error, #sense-dades { text-align: center; color: #666; padding: 2rem 0; }
+    #error { color: var(--danger); }
+
+    .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
+    .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .site-footer .footer-logos-financament { max-width: 420px; margin-bottom: 14px; }
+    .site-footer .footer-logo-mentories { max-width: 150px; margin-bottom: 14px; }
+    .site-footer p { font-size: .72rem; color: #999; line-height: 1.4; margin: 0; max-width: 600px; margin-left: auto; margin-right: auto; }
+    .site-footer a { color: inherit; }
+    .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>micro:bitada Penedès 2026</h1>
+    <p class="subtitle">Resum de totes les sessions jugades</p>
+
+    <p id="carregant">Carregant les dades...</p>
+    <p id="error" class="hidden"></p>
+    <p id="sense-dades" class="hidden">Encara no s'ha acabat cap sessió.</p>
+
+    <div id="contingut" class="hidden">
+        <div class="targetes">
+            <div class="targeta"><div class="num" id="num-escoles">–</div><div class="etiqueta">Escoles participants</div></div>
+            <div class="targeta"><div class="num" id="num-grups">–</div><div class="etiqueta">Grups que han jugat</div></div>
+            <div class="targeta"><div class="num" id="num-reptes">–</div><div class="etiqueta">Reptes resolts</div></div>
+            <div class="targeta"><div class="num" id="num-temps">–</div><div class="etiqueta">Temps mitjà de partida</div></div>
+        </div>
+
+        <h2>Primària / Secundària</h2>
+        <div id="barres-nivell"></div>
+
+        <h2>Grups per curs</h2>
+        <div id="barres-curs"></div>
+
+        <h2>Grups per comarca</h2>
+        <div id="barres-comarca"></div>
+    </div>
+
+    <!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
+    <footer class="site-footer">
+        <img class="footer-logos-financament" src="assets/logos/Logos-4.0.png" alt="Programa finançat pel Ministeri d’Educació, Formació Professional i Esports, amb el suport de la Generalitat de Catalunya">
+        <img class="footer-logo-mentories" src="assets/logos/Logo-Mentories-4.0-1.png" alt="Logo Mentories 4.0">
+        <p>Micro:bitada Penedès 2026 és un projecte desenvolupat pel grup de treball i mentors del Baix Penedès i actualitzat pels mentors i mentores del ST Penedès. Està sota la llicència <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ca" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>. Podeu copiar, distribuir i adaptar l’obra sempre que se’n reconegui l’autoria, no se’n faci un ús comercial, i les obres derivades es distribueixin sota la mateixa llicència.</p>
+    </footer>
+</div>
+
+<script>
+    // ================================================================
+    // CONFIGURACIÓ
+    // ================================================================
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJb0pHUdsrC6waMVTxeE8tXwZI_rsts_KVWpqf4hN3LFrZbuHx4j-KS9_ohYqktY80/exec";
+
+    // ================================================================
+    // DIBUIXAR UN GRUP DE BARRES a partir d'un objecte {etiqueta: comptador}
+    // ================================================================
+    function dibuixarBarres(contenidorId, dades) {
+        const contenidor = document.getElementById(contenidorId);
+        contenidor.innerHTML = "";
+        const entrades = Object.entries(dades).sort((a, b) => b[1] - a[1]);
+        const maxim = Math.max(...entrades.map(e => e[1]), 1);
+        entrades.forEach(([etiqueta, valor]) => {
+            const fila = document.createElement('div');
+            fila.className = 'barra-fila';
+            fila.innerHTML = `
+                <div class="barra-etiqueta"><span>${etiqueta}</span><span>${valor}</span></div>
+                <div class="barra-fons"><div class="barra-plena" style="width:${Math.round(valor / maxim * 100)}%"></div></div>
+            `;
+            contenidor.appendChild(fila);
+        });
+    }
+
+    // Un curs "5è de Primària"/"6è de Primària" compta com a Primària; qualsevol
+    // cosa amb "ESO" compta com a Secundària; la resta cau a "Altres".
+    function classificarNivell(perCurs) {
+        const nivells = { "Primària": 0, "Secundària": 0, "Altres": 0 };
+        Object.entries(perCurs).forEach(([curs, valor]) => {
+            if (/primària/i.test(curs)) nivells["Primària"] += valor;
+            else if (/eso/i.test(curs)) nivells["Secundària"] += valor;
+            else nivells["Altres"] += valor;
+        });
+        return nivells;
+    }
+
+    function formatarTemps(totalSegons) {
+        if (totalSegons === null || totalSegons === undefined) return "–";
+        const min = Math.floor(totalSegons / 60);
+        const seg = totalSegons % 60;
+        return `${min}:${String(seg).padStart(2, '0')}`;
+    }
+
+    // ================================================================
+    // CÀRREGA DE LES DADES (acció "resum" del backend)
+    // ================================================================
+    fetch(`${APPS_SCRIPT_URL}?action=resum`)
+        .then(r => r.json())
+        .then(res => {
+            document.getElementById('carregant').classList.add('hidden');
+            if (!res.ok) {
+                document.getElementById('error').textContent = res.error || "No s'han pogut carregar les dades.";
+                document.getElementById('error').classList.remove('hidden');
+                return;
+            }
+            if (!res.totalGrups) {
+                document.getElementById('sense-dades').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('num-escoles').textContent = res.totalEscoles;
+            document.getElementById('num-grups').textContent = res.totalGrups;
+            document.getElementById('num-reptes').textContent = `${res.totalReptesResolts} / ${res.totalReptesPossibles}`;
+            document.getElementById('num-temps').textContent = formatarTemps(res.mitjanaTempsSegons);
+
+            dibuixarBarres('barres-nivell', classificarNivell(res.perCurs || {}));
+            dibuixarBarres('barres-curs', res.perCurs || {});
+            dibuixarBarres('barres-comarca', res.perComarca || {});
+
+            document.getElementById('contingut').classList.remove('hidden');
+        })
+        .catch(() => {
+            document.getElementById('carregant').classList.add('hidden');
+            document.getElementById('error').textContent = "No s'ha pogut contactar amb el servidor.";
+            document.getElementById('error').classList.remove('hidden');
+        });
+</script>
+
+</body>
+</html>
