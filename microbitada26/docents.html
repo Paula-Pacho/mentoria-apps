@@ -68,6 +68,10 @@
     .btn-secondary { background: white; color: var(--dark); border: 2px solid #ddd; }
     .hidden { display: none !important; }
 
+    /* Enllaç per tornar al menú principal (sempre visible, dins o fora de la contrasenya) */
+    .btn-tornar { display: inline-block; margin-bottom: 1rem; color: var(--dark); text-decoration: none; font-weight: bold; font-size: .95rem; }
+    .btn-tornar:hover { text-decoration: underline; }
+
     /* Pantalla d'accés amb contrasenya */
     #gate { max-width: 340px; margin: 3rem auto; text-align: center; }
     #gate p.error { color: var(--danger); font-weight: bold; min-height: 1.2em; }
@@ -107,6 +111,8 @@
 <body>
 
 <div class="container">
+
+    <a class="btn-tornar" href="../index.html">← Torna al menú principal</a>
 
     <!-- PANTALLA D'ACCÉS: contrasenya dissuasiva (no és seguretat real) -->
     <div id="gate">
@@ -249,7 +255,7 @@
 
         <!-- 4) Enllaços ràpids durant la sessió -->
         <h2>4. Durant la sessió</h2>
-        <a class="btn btn-secondary" href="marcador.html" target="_blank" rel="noopener">📊 Obre el marcador en directe</a>
+        <a class="btn btn-secondary" id="link-marcador" href="marcador.html" target="_blank" rel="noopener">📊 Obre el marcador en directe</a>
     </div>
 
     <!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
@@ -270,6 +276,7 @@
     // només vol evitar que l'alumnat hi entri per curiositat.
     const CONTRASENYA = "GTRoboticaBP2026";
     const SESSIO_KEY = "microbitada_docent_auth";
+    const SESSIO_DADES_KEY = "microbitada_docent_sessio"; // recorda el darrer codi generat, per si es recarrega la pàgina
 
     // ================================================================
     // PANTALLA D'ACCÉS
@@ -287,6 +294,27 @@
     function mostrarPanel() {
         document.getElementById('gate').classList.add('hidden');
         document.getElementById('panel').classList.remove('hidden');
+        recuperarSessioDesada();
+    }
+
+    // Si ja s'havia generat un codi abans (encara dins d'aquesta pestanya del
+    // navegador), el tornem a mostrar en comptes de deixar el formulari buit:
+    // recarregar la pàgina no ha de fer "perdre" el codi que s'acaba de donar
+    // a l'alumnat.
+    function recuperarSessioDesada() {
+        try {
+            const desada = JSON.parse(sessionStorage.getItem(SESSIO_DADES_KEY) || "null");
+            if (desada && desada.codi) {
+                document.getElementById('codi-gran').textContent = desada.codi;
+                document.getElementById('codi-resultat').classList.remove('hidden');
+                actualitzarEnllaçMarcador(desada.codi);
+            }
+        } catch (err) { /* sessionStorage no disponible: no passa res */ }
+    }
+
+    function actualitzarEnllaçMarcador(codi) {
+        const link = document.getElementById('link-marcador');
+        link.href = codi ? `marcador.html?codi=${encodeURIComponent(codi)}` : 'marcador.html';
     }
 
     // Si ja es va introduir la contrasenya correcta abans en aquesta mateixa
@@ -321,6 +349,10 @@
             }
             document.getElementById('codi-gran').textContent = res.codi;
             document.getElementById('codi-resultat').classList.remove('hidden');
+            try {
+                sessionStorage.setItem(SESSIO_DADES_KEY, JSON.stringify({ codi: res.codi, escola, comarca, curs }));
+            } catch (err) { /* sessionStorage no disponible: el codi només es veurà mentre no es recarregui */ }
+            actualitzarEnllaçMarcador(res.codi);
         } catch (err) {
             errorEl.textContent = "No s'ha pogut contactar amb el servidor. Comprova la connexió i torna-ho a provar.";
         } finally {
@@ -335,6 +367,8 @@
         document.getElementById('input-comarca').selectedIndex = 0;
         document.getElementById('input-curs').selectedIndex = 0;
         document.getElementById('input-escola').focus();
+        try { sessionStorage.removeItem(SESSIO_DADES_KEY); } catch (err) { /* no passa res */ }
+        actualitzarEnllaçMarcador("");
     }
 </script>
 
