@@ -454,7 +454,7 @@ function obtenirResum() {
         if (fila[idx["Temps repte " + n]]) totalReptesResolts++;
       }
 
-      const segons = mmssASegons(fila[idx["Temps total"]]);
+      const segons = mmssASegons(fila[idx["Temps"]]);
       if (segons !== null) {
         sumaSegons += segons;
         sessionsAmbTemps++;
