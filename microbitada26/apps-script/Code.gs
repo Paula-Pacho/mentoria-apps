@@ -124,7 +124,7 @@ function obtenirOCrearFullEstat() {
   let sheet = ss.getSheetByName(SHEET_ESTAT);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_ESTAT);
-    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat", "numGrup", "nivell", "comarca", "curs"]);
+    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat", "numGrup", "nivell", "comarca", "curs", "codi"]);
   } else {
     // Compatibilitat amb fulls "Estat en viu" creats abans d'afegir aquestes columnes
     if (sheet.getRange(1, 9).getValue() !== "numGrup") {
@@ -138,6 +138,9 @@ function obtenirOCrearFullEstat() {
     }
     if (sheet.getRange(1, 12).getValue() !== "curs") {
       sheet.getRange(1, 12).setValue("curs");
+    }
+    if (sheet.getRange(1, 13).getValue() !== "codi") {
+      sheet.getRange(1, 13).setValue("codi");
     }
   }
   // tempsTotal (columna F) és un text "mm:ss" de temps transcorregut, no una
@@ -171,7 +174,8 @@ function registrarProgres(body) {
     body.numGrup || "",
     body.nivell || "",
     body.comarca || "",
-    body.curs || ""
+    body.curs || "",
+    body.codi || ""
   ];
   if (indexFila === -1) {
     sheet.appendRow(valorsFila);
