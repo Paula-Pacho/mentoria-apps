@@ -62,6 +62,9 @@ function doGet(e) {
   if (params.action === "resum") {
     return obtenirResum();
   }
+  if (params.action === "debugTemps") {
+    return debugTemps();
+  }
   return llegirEstat();
 }
 
@@ -421,6 +424,32 @@ function registrarRespostaFinal(body) {
 // RESUM PÚBLIC: estadístiques agregades de totes les "Sessions
 // finalitzades", per a la pàgina pública de resum (resum.html).
 // ================================================================
+/**
+ * TEMPORAL: endpoint de diagnostic per al bug del "Temps mitja" en blanc.
+ * Es traura un cop localitzada la causa real. No modifica cap dada.
+ */
+function debugTemps() {
+  try {
+    const sheet = obtenirFullRespostes();
+    const valors = sheet.getDataRange().getValues();
+    const capçaleres = valors.shift();
+    const idx = {};
+    capçaleres.forEach(function (h, i) { idx[h] = i; });
+    const mostra = valors.slice(0, 5).map(function (fila) {
+      const raw = fila[idx["Temps"]];
+      return {
+        raw: String(raw),
+        tipus: typeof raw,
+        esData: raw instanceof Date,
+        parsejat: mmssASegons(raw)
+      };
+    });
+    return respondreJSON({ ok: true, capçaleres: capçaleres, indexTemps: idx["Temps"], mostra: mostra });
+  } catch (err) {
+    return respondreJSON({ ok: false, error: String(err) });
+  }
+}
+
 function obtenirResum() {
   try {
     const sheet = obtenirFullRespostes();
