@@ -77,23 +77,14 @@
 <body>
 
 <div class="container">
-    <!-- PANTALLA 1: tria de l'escola -->
+    <!-- PANTALLA 1: introducció del codi de sessió (el genera el/la docent a la pàgina Docents) -->
     <div id="step-school">
         <h2>Benvinguts i benvingudes a la micro:bitada Penedès 2026</h2>
-        <label for="school-input" class="sr-only">Nom de l'escola</label>
-        <input type="text" id="school-input" list="school-options" placeholder="Escriu o tria la teva escola...">
-        <datalist id="school-options">
-            <option value="Sant Domènec de la Ràpita (Santa Margarida i els Monjos)">
-            <option value="Ull de Vent (la Bisbal del Penedès)">
-            <option value="Àngels Garriga (el Vendrell)">
-            <option value="Mare de Déu del Priorat (Banyeres)">
-            <option value="Els Quatre Vents (Sant Jaume dels Domenys)">
-            <option value="La Parellada (Santa Oliva)">
-            <option value="La Ginesta (Segur de Calafel)">
-            <option value="Subxarxa de Coordinació Alt Penedès">
-        </datalist>
+        <p>Escriu el codi de sessió de 4 caràcters que us ha donat el/la docent.</p>
+        <label for="school-input" class="sr-only">Codi de sessió</label>
+        <input type="text" id="school-input" maxlength="4" autocapitalize="characters" placeholder="Codi de sessió (p. ex. K7QF)">
         <br><br>
-        <button class="btn-main" onclick="goToGroups()">Següent</button>
+        <button class="btn-main" id="btn-school-next" onclick="goToGroups()">Següent</button>
     </div>
 
     <!-- PANTALLA 2: registre del grup (número, mida, nivell i nom de l'equip) -->
@@ -255,7 +246,7 @@
         { images: ['R5_1', 'R5_2', 'R5_3', 'R5_4'],  type: 'matrix', key: 'p2',   title: "Patró 5x5 Final" }
     ];
 
-    let school = "", allGroups = [], tempGroup = { name: "", size: "", level: "" };
+    let school = "", sessionComarca = "", sessionCurs = "", allGroups = [], tempGroup = { name: "", size: "", level: "" };
     let activeGroupIdx = 0, introIdx = 0, activeReptoIdx = 0, imgWithinRepto = 0;
     let timerInterval, startTime, currentGroupNum = "1";
     let tempsReptes = ["", "", "", "", ""];
@@ -275,6 +266,8 @@
             numGrup: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].number : "",
             numComponents: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].size : "",
             nivell: allGroups[activeGroupIdx] ? allGroups[activeGroupIdx].level : "",
+            comarca: sessionComarca,
+            curs: sessionCurs,
             totalReptes: GAME_FLOW.length,
             tempsTotal: document.getElementById('display-timer').innerText
         }, extra);
@@ -352,13 +345,37 @@
     }
 
     // ================================================================
-    // PANTALLA 1: ESCOLA
+    // PANTALLA 1: CODI DE SESSIÓ
+    // Comprova el codi contra el backend (acció "validarCodi") i, si és
+    // correcte, en recupera l'escola/comarca/curs que hi va associar el/la
+    // docent en generar-lo des de la pàgina Docents.
     // ================================================================
-    function goToGroups() {
-        school = document.getElementById('school-input').value.trim();
-        if(!school) return alert("Si us plau, escriu o tria la teva escola");
-        document.getElementById('step-school').classList.add('hidden');
-        document.getElementById('step-groups').classList.remove('hidden');
+    async function goToGroups() {
+        const codi = document.getElementById('school-input').value.trim().toUpperCase();
+        if (!codi) return alert("Si us plau, escriu el codi de sessió que us ha donat el/la docent");
+
+        const btn = document.getElementById('btn-school-next');
+        btn.disabled = true;
+        const textOriginal = btn.textContent;
+        btn.textContent = "Comprovant...";
+        try {
+            const params = new URLSearchParams({ action: 'validarCodi', codi });
+            const res = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`).then(r => r.json());
+            if (!res.ok) {
+                alert(res.error || "Codi no vàlid. Comprova-ho amb el/la docent.");
+                return;
+            }
+            school = res.escola;
+            sessionComarca = res.comarca || "";
+            sessionCurs = res.curs || "";
+            document.getElementById('step-school').classList.add('hidden');
+            document.getElementById('step-groups').classList.remove('hidden');
+        } catch (err) {
+            alert("No s'ha pogut comprovar el codi. Comprova la connexió a internet i torna-ho a provar.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = textOriginal;
+        }
     }
 
     // ================================================================
