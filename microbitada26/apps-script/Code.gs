@@ -25,19 +25,24 @@
 
 const SHEET_RESPOSTES = "Sessions finalitzades"; // pestanya on queden totes les partides acabades
 const SHEET_ESTAT = "Estat en viu";
+const SHEET_SESSIONS = "Sessions actives"; // pestanya amb els codis de sessió que genera el/la docent
 const HORES_CADUCITAT = 4; // hores sense actualitzar-se a partir de les quals una sessió es considera abandonada
+const HORES_CADUCITAT_CODI = 12; // hores a partir de les quals un codi de sessió es descarta si no s'ha fet servir
 
 // GET amb ?action=progress|finish : el joc avisa d'un canvi d'estat.
+// GET amb ?action=crearSessio : la pàgina Docents genera un codi de sessió nou.
+// GET amb ?action=validarCodi : el joc comprova un codi de sessió i en recupera l'escola/comarca/curs.
+// GET amb ?action=resum : la pàgina de resum públic demana les estadístiques agregades.
 // GET sense "action" : el marcador demana l'estat actual de tots els grups.
 // (Fem servir GET per a tot, també per als events del joc, perquè els POST a un
 // Apps Script Web App no sempre porten la capçalera CORS que el navegador exigeix
 // per poder-ne llegir la resposta, encara que el POST s'executi bé al servidor.)
 // ================================================================
 // PUNT D'ENTRADA DE TOTES LES PETICIONS
-// Google crida sempre doGet(): tant el joc (microbitada.html) com el
-// marcador (marcador.html) li parlen per GET (mai per POST, veure
-// comentari més avall). Segons si porta "action" o no, es reparteix
-// cap a gestionarEvent() o cap a llegirEstat().
+// Google crida sempre doGet(): el joc (microbitada.html), el marcador
+// (marcador.html) i la pàgina Docents (docents.html) li parlen per GET
+// (mai per POST, veure comentari més amunt). Segons el paràmetre "action"
+// que porti, es reparteix cap a la funció que toqui.
 // ================================================================
 function doGet(e) {
   // e pot ser undefined si aquesta funció es prova manualment des de l'editor
@@ -47,6 +52,15 @@ function doGet(e) {
   const params = (e && e.parameter) || {};
   if (params.action === "progress" || params.action === "finish") {
     return gestionarEvent(params);
+  }
+  if (params.action === "crearSessio") {
+    return crearSessio(params);
+  }
+  if (params.action === "validarCodi") {
+    return validarCodi(params);
+  }
+  if (params.action === "resum") {
+    return obtenirResum();
   }
   return llegirEstat();
 }
@@ -110,7 +124,7 @@ function obtenirOCrearFullEstat() {
   let sheet = ss.getSheetByName(SHEET_ESTAT);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_ESTAT);
-    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat", "numGrup", "nivell"]);
+    sheet.appendRow(["sessionId", "escola", "grup", "retoActual", "totalReptes", "tempsTotal", "estat", "actualitzat", "numGrup", "nivell", "comarca", "curs"]);
   } else {
     // Compatibilitat amb fulls "Estat en viu" creats abans d'afegir aquestes columnes
     if (sheet.getRange(1, 9).getValue() !== "numGrup") {
@@ -118,6 +132,12 @@ function obtenirOCrearFullEstat() {
     }
     if (sheet.getRange(1, 10).getValue() !== "nivell") {
       sheet.getRange(1, 10).setValue("nivell");
+    }
+    if (sheet.getRange(1, 11).getValue() !== "comarca") {
+      sheet.getRange(1, 11).setValue("comarca");
+    }
+    if (sheet.getRange(1, 12).getValue() !== "curs") {
+      sheet.getRange(1, 12).setValue("curs");
     }
   }
   // tempsTotal (columna F) és un text "mm:ss" de temps transcorregut, no una
@@ -149,7 +169,9 @@ function registrarProgres(body) {
     body.estat || "en joc",
     new Date(),
     body.numGrup || "",
-    body.nivell || ""
+    body.nivell || "",
+    body.comarca || "",
+    body.curs || ""
   ];
   if (indexFila === -1) {
     sheet.appendRow(valorsFila);
@@ -176,6 +198,101 @@ function eliminarDeEstatEnViu(sessionId) {
 }
 
 // ================================================================
+// FULL "Sessions actives": codis de sessió tipus Kahoot que genera el/la
+// docent des de la pàgina Docents, perquè l'alumnat els introdueixi en
+// lloc d'escriure el nom de l'escola a mà (evita duplicats quan juguen
+// diversos grups de la mateixa escola alhora).
+// ================================================================
+function obtenirOCrearFullSessions() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_SESSIONS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_SESSIONS);
+    sheet.appendRow(["codi", "escola", "comarca", "curs", "creat"]);
+  }
+  return sheet;
+}
+
+/**
+ * Genera un codi de 4 caràcters (sense 0/O/1/I, que es poden confondre) que
+ * encara no existeixi a "Sessions actives", i el desa amb les dades que ha
+ * introduït el/la docent (escola, comarca, curs).
+ */
+function crearSessio(params) {
+  try {
+    if (!params.escola) {
+      return respondreJSON({ ok: false, error: "Falta el nom de l'escola" });
+    }
+    const sheet = obtenirOCrearFullSessions();
+    const existents = sheet.getDataRange().getValues().slice(1).map(function (fila) { return fila[0]; });
+    let codi;
+    do {
+      codi = generarCodiSessio();
+    } while (existents.indexOf(codi) !== -1);
+
+    sheet.appendRow([codi, params.escola, params.comarca || "", params.curs || "", new Date()]);
+    return respondreJSON({ ok: true, codi: codi });
+  } catch (err) {
+    return respondreJSON({ ok: false, error: String(err) });
+  }
+}
+
+function generarCodiSessio() {
+  const caracters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sense 0/O/1/I
+  let codi = "";
+  for (let i = 0; i < 4; i++) {
+    codi += caracters.charAt(Math.floor(Math.random() * caracters.length));
+  }
+  return codi;
+}
+
+/**
+ * Comprova un codi de sessió (introduït per l'alumnat a microbitada.html) i,
+ * si existeix, retorna l'escola/comarca/curs que hi va associar el/la docent.
+ */
+function validarCodi(params) {
+  try {
+    const codi = String(params.codi || "").trim().toUpperCase();
+    if (!codi) {
+      return respondreJSON({ ok: false, error: "Falta el codi" });
+    }
+    const sheet = obtenirOCrearFullSessions();
+    const dades = sheet.getDataRange().getValues();
+    for (let i = 1; i < dades.length; i++) {
+      if (String(dades[i][0]).toUpperCase() === codi) {
+        return respondreJSON({
+          ok: true,
+          escola: dades[i][1],
+          comarca: dades[i][2],
+          curs: dades[i][3]
+        });
+      }
+    }
+    return respondreJSON({ ok: false, error: "Codi no trobat. Comprova que el/la docent l'hagi generat avui." });
+  } catch (err) {
+    return respondreJSON({ ok: false, error: String(err) });
+  }
+}
+
+/**
+ * Neteja "Sessions actives": descarta els codis que porten més de
+ * HORES_CADUCITAT_CODI hores generats (sessions d'altres dies).
+ */
+function netejarCodisCaducats() {
+  const sheet = obtenirOCrearFullSessions();
+  const valors = sheet.getDataRange().getValues();
+  if (valors.length < 2) return;
+
+  const ara = new Date();
+  const limitMs = HORES_CADUCITAT_CODI * 60 * 60 * 1000;
+  for (let i = valors.length - 1; i >= 1; i--) {
+    const creat = valors[i][4] instanceof Date ? valors[i][4] : new Date(valors[i][4]);
+    if (isNaN(creat.getTime()) || (ara - creat) < limitMs) continue;
+    sheet.deleteRow(i + 1);
+  }
+}
+
+// ================================================================
 // FULL "Sessions finalitzades" (l'historial de totes les partides ja
 // ACABADES, amb el temps de cada repte)
 // ================================================================
@@ -192,14 +309,15 @@ function obtenirFullRespostes() {
   sheet.appendRow([
     "Marca de temps", "Escola", "Grup", "Temps total",
     "Temps repte 1", "Temps repte 2", "Temps repte 3", "Temps repte 4", "Temps repte 5",
-    "Número de grup", "Nivell"
+    "Número de grup", "Nivell", "Comarca", "Curs"
   ]);
   return sheet;
 }
 
 /**
  * Afegeix la fila final a "Sessions finalitzades" amb el resultat de la partida
- * (Marca de temps, Escola, Grup, Temps, Temps repte 1..5, Número de grup).
+ * (Marca de temps, Escola, Grup, Temps, Temps repte 1..5, Número de grup, Nivell,
+ * Comarca, Curs).
  */
 function registrarRespostaFinal(body) {
   const sheet = obtenirFullRespostes();
@@ -213,6 +331,12 @@ function registrarRespostaFinal(body) {
   }
   if (sheet.getRange(1, 11).getValue() !== "Nivell") {
     sheet.getRange(1, 11).setValue("Nivell");
+  }
+  if (sheet.getRange(1, 12).getValue() !== "Comarca") {
+    sheet.getRange(1, 12).setValue("Comarca");
+  }
+  if (sheet.getRange(1, 13).getValue() !== "Curs") {
+    sheet.getRange(1, 13).setValue("Curs");
   }
   // Temps i Temps repte 1-5 (columnes D-I) són text "mm:ss", no hores reals.
   // Formatem cada columna per separat (no "D:I" de cop): en aquest full
@@ -237,7 +361,9 @@ function registrarRespostaFinal(body) {
     tr[3] || "",
     tr[4] || "",
     body.numGrup || "",
-    body.nivell || ""
+    body.nivell || "",
+    body.comarca || "",
+    body.curs || ""
   ];
   // NO fem servir sheet.appendRow() aquí: aquesta pestanya prové d'un Google
   // Form i els fulls vinculats a un Form restringeixen accions "a nivell de
@@ -248,8 +374,79 @@ function registrarRespostaFinal(body) {
 }
 
 // ================================================================
+// RESUM PÚBLIC: estadístiques agregades de totes les "Sessions
+// finalitzades", per a la pàgina pública de resum (resum.html).
+// ================================================================
+function obtenirResum() {
+  try {
+    const sheet = obtenirFullRespostes();
+    const valors = sheet.getDataRange().getValues();
+    const capçaleres = valors.shift();
+    const idx = {};
+    capçaleres.forEach(function (h, i) { idx[h] = i; });
+
+    const escoles = {};
+    const perCurs = {};
+    const perComarca = {};
+    let totalGrups = 0;
+    let totalReptesResolts = 0;
+    let sumaSegons = 0;
+    let sessionsAmbTemps = 0;
+
+    valors.forEach(function (fila) {
+      const escola = fila[idx["Escola"]];
+      if (!escola) return;
+
+      totalGrups++;
+      escoles[escola] = true;
+
+      const curs = fila[idx["Curs"]] || "Sense especificar";
+      perCurs[curs] = (perCurs[curs] || 0) + 1;
+
+      const comarca = fila[idx["Comarca"]] || "Sense especificar";
+      perComarca[comarca] = (perComarca[comarca] || 0) + 1;
+
+      for (let n = 1; n <= 5; n++) {
+        if (fila[idx["Temps repte " + n]]) totalReptesResolts++;
+      }
+
+      const segons = mmssASegons(fila[idx["Temps total"]]);
+      if (segons !== null) {
+        sumaSegons += segons;
+        sessionsAmbTemps++;
+      }
+    });
+
+    return respondreJSON({
+      ok: true,
+      totalEscoles: Object.keys(escoles).length,
+      totalGrups: totalGrups,
+      perCurs: perCurs,
+      perComarca: perComarca,
+      totalReptesResolts: totalReptesResolts,
+      totalReptesPossibles: totalGrups * 5,
+      mitjanaTempsSegons: sessionsAmbTemps ? Math.round(sumaSegons / sessionsAmbTemps) : null
+    });
+  } catch (err) {
+    return respondreJSON({ ok: false, error: String(err) });
+  }
+}
+
+// Converteix un text "mm:ss" a segons totals. Retorna null si no es pot llegir.
+function mmssASegons(text) {
+  if (!text) return null;
+  const parts = String(text).split(":");
+  if (parts.length !== 2) return null;
+  const min = parseInt(parts[0], 10);
+  const seg = parseInt(parts[1], 10);
+  if (isNaN(min) || isNaN(seg)) return null;
+  return min * 60 + seg;
+}
+
+// ================================================================
 // MANTENIMENT AUTOMÀTIC: neteja de sessions abandonades (dispositiu
-// tancat sense prémer cap botó de final) i el seu trigger horari
+// tancat sense prémer cap botó de final), de codis de sessió caducats,
+// i el trigger horari que ho executa tot plegat
 // ================================================================
 /**
  * Neteja "Estat en viu": qualsevol sessió que porti més de HORES_CADUCITAT
@@ -257,14 +454,18 @@ function registrarRespostaFinal(body) {
  * tancar, es va perdre la connexió, etc. abans de prémer el botó de
  * finalitzar). La traslladem a "Sessions finalitzades" i l'eliminem
  * d'"Estat en viu", perquè el marcador només mostri partides realment actives.
+ * De passada, neteja també els codis de sessió caducats (netejarCodisCaducats).
  *
  * Pensada per executar-se automàticament cada hora (veure installarTriggerNeteja).
- * No fa res si no hi ha cap sessió caducada.
+ * No fa res si no hi ha cap sessió ni codi caducat.
  */
 function netejarSessionsCaducades() {
   const sheet = obtenirOCrearFullEstat();
   const valors = sheet.getDataRange().getValues();
-  if (valors.length < 2) return; // només capçalera, no hi ha files
+  if (valors.length < 2) {
+    netejarCodisCaducats();
+    return;
+  }
 
   const capçaleres = valors[0];
   const ara = new Date();
@@ -285,11 +486,15 @@ function netejarSessionsCaducades() {
       tempsTotal: obj.tempsTotal,
       tempsReptes: ["", "", "", "", ""], // no sabem el detall per repte d'una sessió abandonada
       numGrup: obj.numGrup,
-      nivell: obj.nivell
+      nivell: obj.nivell,
+      comarca: obj.comarca,
+      curs: obj.curs
     });
 
     sheet.deleteRow(i + 1); // +1: valors[0] és la capçalera (fila 1 del full)
   }
+
+  netejarCodisCaducats();
 }
 
 /**
