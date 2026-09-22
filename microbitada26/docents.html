@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<!--
+  DOCENTS.HTML — Zona privada per al professorat
+  ==================================================
+  Pàgina protegida amb una contrasenya senzilla (només un fre dissuasiu
+  per a l'alumnat, no seguretat real: la contrasenya viatja dins del codi
+  que es serveix al navegador). Un cop dins, el/la docent pot:
+    1) Donar d'alta una sessió nova (escola, comarca, curs) i generar el
+       codi que l'alumnat introduirà a microbitada.html en comptes
+       d'escriure el nom de l'escola a mà.
+    2) Obrir la guia didàctica i les solucions (enllaç a Google Drive,
+       només amb compte xtec).
+    3) Seguir el pas a pas per flashejar els codis MakeCode a les
+       micro:bits descodificadores i a les del pati, abans de la sessió.
+-->
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>micro:bitada Penedès 2026 — Docents</title>
+<style>
+    /* Colors generals (els mateixos que a la resta de pàgines del projecte) */
+    :root { --primary: #2275d7; --secondary: #f39c12; --danger: #df2e1b; --success: #2ecc71; --dark: #2c3e50; }
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background-color: #e9ecef;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        padding: 20px;
+    }
+    .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 900px;
+    }
+    h1 { color: var(--dark); margin: 0 0 .25rem; font-size: 1.6rem; text-align: center; }
+    p.subtitle { color: #666; margin: 0 0 2rem; font-size: 1rem; text-align: center; }
+    h2 { color: var(--dark); font-size: 1.2rem; margin: 2.2rem 0 .8rem; border-bottom: 2px solid #eee; padding-bottom: .4rem; }
+    h2:first-of-type { margin-top: 0; }
+    label { display: block; font-weight: bold; color: var(--dark); margin: .8rem 0 .3rem; }
+    input[type="text"], select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-family: inherit;
+    }
+    .btn {
+        display: inline-block;
+        padding: 12px 20px;
+        border-radius: 8px;
+        border: none;
+        font-weight: bold;
+        font-size: 1rem;
+        text-decoration: none;
+        cursor: pointer;
+        font-family: inherit;
+        margin-top: 1rem;
+    }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-primary { background-color: var(--primary); color: white; }
+    .btn-secondary { background: white; color: var(--dark); border: 2px solid #ddd; }
+    .hidden { display: none !important; }
+
+    /* Pantalla d'accés amb contrasenya */
+    #gate { max-width: 340px; margin: 3rem auto; text-align: center; }
+    #gate p.error { color: var(--danger); font-weight: bold; min-height: 1.2em; }
+
+    /* Codi de sessió generat: gran i ben visible perquè es pugui llegir de lluny */
+    #codi-resultat {
+        text-align: center;
+        background: #eaf3fc;
+        border: 2px dashed var(--primary);
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1.2rem;
+    }
+    #codi-resultat .codi-gran {
+        font-size: 3rem;
+        font-weight: bold;
+        letter-spacing: .15em;
+        color: var(--primary);
+        font-family: 'Courier New', monospace;
+    }
+
+    /* Taules del pas a pas d'instal·lació */
+    table.guia { width: 100%; border-collapse: collapse; margin: .8rem 0 1.5rem; font-size: .95rem; }
+    table.guia th, table.guia td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+    table.guia th { background: #f4f6f8; color: var(--dark); }
+    table.guia a { color: var(--primary); font-weight: bold; }
+    .nota { background: #fff8e1; border-left: 4px solid var(--secondary); padding: .8rem 1rem; font-size: .9rem; color: #555; margin: .8rem 0 1.5rem; border-radius: 0 6px 6px 0; }
+
+    .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
+    .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .site-footer .footer-logos-financament { max-width: 420px; margin-bottom: 14px; }
+    .site-footer .footer-logo-mentories { max-width: 150px; margin-bottom: 14px; }
+    .site-footer p { font-size: .72rem; color: #999; line-height: 1.4; margin: 0; max-width: 600px; margin-left: auto; margin-right: auto; }
+    .site-footer a { color: inherit; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- PANTALLA D'ACCÉS: contrasenya dissuasiva (no és seguretat real) -->
+    <div id="gate">
+        <h1>Micro:bitada — Docents</h1>
+        <p class="subtitle">Zona reservada al professorat</p>
+        <label for="password-input" class="sr-only">Contrasenya</label>
+        <input type="password" id="password-input" placeholder="Contrasenya">
+        <p class="error" id="password-error"></p>
+        <button class="btn btn-primary" onclick="comprovarContrasenya()">Entrar</button>
+    </div>
+
+    <!-- CONTINGUT PRINCIPAL: es mostra un cop introduïda la contrasenya correcta -->
+    <div id="panel" class="hidden">
+        <h1>Micro:bitada — Docents</h1>
+        <p class="subtitle">Prepareu la sessió i teniu a mà la guia durant la gimcana</p>
+
+        <!-- 1) Alta d'una sessió nova i generació del codi -->
+        <h2>1. Prepareu una sessió nova</h2>
+        <p>Ompliu aquestes dades i genereu un codi. L'alumnat l'introduirà a la pantalla inicial del joc en comptes d'escriure el nom de l'escola, així podeu tenir diversos grups jugant alhora sense que es confonguin.</p>
+        <label for="input-escola">Nom de l'escola</label>
+        <input type="text" id="input-escola" placeholder="Escriu el nom de l'escola">
+        <label for="input-comarca">Comarca</label>
+        <select id="input-comarca">
+            <option value="" selected disabled>Selecciona la comarca...</option>
+            <option>Alt Camp</option>
+            <option>Alt Empordà</option>
+            <option>Alt Penedès</option>
+            <option>Alt Urgell</option>
+            <option>Alta Ribagorça</option>
+            <option>Anoia</option>
+            <option>Bages</option>
+            <option>Baix Camp</option>
+            <option>Baix Ebre</option>
+            <option>Baix Empordà</option>
+            <option>Baix Llobregat</option>
+            <option>Baix Penedès</option>
+            <option>Barcelonès</option>
+            <option>Berguedà</option>
+            <option>Cerdanya</option>
+            <option>Conca de Barberà</option>
+            <option>Garraf</option>
+            <option>Garrigues</option>
+            <option>Garrotxa</option>
+            <option>Gironès</option>
+            <option>Maresme</option>
+            <option>Moianès</option>
+            <option>Montsià</option>
+            <option>Noguera</option>
+            <option>Osona</option>
+            <option>Pallars Jussà</option>
+            <option>Pallars Sobirà</option>
+            <option>Pla d'Urgell</option>
+            <option>Pla de l'Estany</option>
+            <option>Priorat</option>
+            <option>Ribera d'Ebre</option>
+            <option>Ripollès</option>
+            <option>Segarra</option>
+            <option>Segrià</option>
+            <option>Selva</option>
+            <option>Solsonès</option>
+            <option>Tarragonès</option>
+            <option>Terra Alta</option>
+            <option>Urgell</option>
+            <option>Val d'Aran</option>
+            <option>Vallès Occidental</option>
+            <option>Vallès Oriental</option>
+        </select>
+        <label for="input-curs">Curs</label>
+        <select id="input-curs">
+            <option value="" selected disabled>Selecciona el curs...</option>
+            <option>5è de Primària</option>
+            <option>6è de Primària</option>
+            <option>1r d'ESO</option>
+            <option>2n d'ESO</option>
+            <option>3r d'ESO</option>
+            <option>Altre</option>
+        </select>
+        <button class="btn btn-primary" id="btn-generar" onclick="generarCodi()">Genera el codi de sessió</button>
+
+        <div id="codi-resultat" class="hidden">
+            <p style="margin:0 0 .5rem; color:var(--dark);">Codi de la sessió d'avui:</p>
+            <div class="codi-gran" id="codi-gran"></div>
+            <p style="margin:.8rem 0 0; font-size:.85rem; color:#666;">Digueu-lo en veu alta o escriviu-lo a la pissarra. Cada grup l'ha d'introduir a la pantalla inicial del joc en comptes del nom de l'escola.</p>
+            <button class="btn btn-secondary" onclick="reiniciarFormulariSessio()">Genera'n un altre</button>
+        </div>
+        <p class="error" id="sessio-error"></p>
+
+        <!-- 2) Guia didàctica -->
+        <h2>2. Guia didàctica i solucions</h2>
+        <p>Conté l'explicació completa de cada repte, les solucions per a l'alumnat i les imatges del repte 2. Només accessible amb compte de correu xtec.</p>
+        <!-- TODO: substituir aquest enllaç quan el PDF estigui penjat a Drive amb accés restringit a xtec -->
+        <a class="btn btn-secondary" href="#" target="_blank" rel="noopener" title="Pendent: cal l'enllaç de Google Drive">📄 Obre la guia didàctica (Drive) — enllaç pendent</a>
+
+        <!-- 3) Pas a pas d'instal·lació -->
+        <h2>3. Pas a pas: instal·lar els codis a les micro:bits</h2>
+        <p>Abans de la sessió cal flashejar cada micro:bit descodificadora amb el seu programa MakeCode. Aquests enllaços són els mateixos que ja teniu a la guia didàctica, recollits aquí perquè els tingueu tots a mà.</p>
+
+        <div class="nota">Com flashejar: obriu l'enllaç a <a href="https://makecode.microbit.org/" target="_blank" rel="noopener">makecode.microbit.org</a>, connecteu la micro:bit per USB i premeu "Baixa" (o arrossegueu el fitxer .hex descarregat sobre la unitat MICROBIT si l'ordinador no té WebUSB). Comproveu que cada carcassa de color porta la micro:bit amb el número de grup correcte.</div>
+
+        <h3 style="color:var(--dark); font-size:1rem;">Descodificadores dels grups (una per grup, es fan servir als reptes 1, 2, 4 i 5)</h3>
+        <table class="guia">
+            <tr><th>Grup</th><th>Enllaç MakeCode</th></tr>
+            <tr><td>1</td><td><a href="https://makecode.microbit.org/_2wV05DhD2Dcj" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>2</td><td><a href="https://makecode.microbit.org/_f3xMkmR7wfoD" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>3</td><td><a href="https://makecode.microbit.org/_AJ9AAHf0k9uX" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>4</td><td><a href="https://makecode.microbit.org/_Vb0PWHAssYaq" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>5</td><td><a href="https://makecode.microbit.org/_Ey8fjehE9FXx" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+        </table>
+
+        <h3 style="color:var(--dark); font-size:1rem;">Repte 2 — Micro:bit "correctora" (només per al/la docent)</h3>
+        <table class="guia">
+            <tr><th>Aparell</th><th>Enllaç MakeCode</th></tr>
+            <tr><td>Micro:bit correctora</td><td><a href="https://makecode.microbit.org/S10506-06976-26173-42999" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+        </table>
+        <p style="font-size:.9rem;">Imatges de les boques per repte i grup: <a href="https://canva.link/56fx0olk80pvlpf" target="_blank" rel="noopener">obre el Canva</a>.</p>
+
+        <h3 style="color:var(--dark); font-size:1rem;">Repte 3 — Micro:bits del pati (6 unitats, una lletra cadascuna, compartides per tots els grups)</h3>
+        <table class="guia">
+            <tr><th>Micro:bit del pati</th><th>Enllaç MakeCode</th></tr>
+            <tr><td>1</td><td><a href="https://makecode.microbit.org/_JKcF3z81f8u6" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>2</td><td><a href="https://makecode.microbit.org/_WhRhXyUToLJX" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>3</td><td><a href="https://makecode.microbit.org/_Jj3Aa6evcRat" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>4</td><td><a href="https://makecode.microbit.org/_7XR0iteRhcCE" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>5</td><td><a href="https://makecode.microbit.org/_FoCa75egg0PA" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>6</td><td><a href="https://makecode.microbit.org/_g6j6k9Dv6APh" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+        </table>
+        <div class="nota">Comproveu quina lletra dona cada micro:bit abans de repartir-les pel pati: la guia didàctica indica quina lletra correspon a cada grup i a cada micro:bit.</div>
+
+        <h3 style="color:var(--dark); font-size:1rem;">Solucions de referència (el que hauria de programar l'alumnat)</h3>
+        <table class="guia">
+            <tr><th>Repte</th><th>Enllaç MakeCode</th></tr>
+            <tr><td>Repte 1 — Compte enrere</td><td><a href="https://makecode.microbit.org/S12241-37522-44849-40497" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>Repte 3 — Micro:bit receptora</td><td><a href="https://makecode.microbit.org/S32749-64507-50350-76608" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>Repte 4 — Hackeja el sistema</td><td><a href="https://makecode.microbit.org/S35842-93533-26110-75143" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>Repte 5 — Patró secret (solució)</td><td><a href="https://makecode.microbit.org/S86980-84893-46219-26426" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+            <tr><td>Repte 5 — Codi inicial (es dona a l'alumnat)</td><td><a href="https://makecode.microbit.org/S17832-99665-57486-11507" target="_blank" rel="noopener">Obre el programa</a></td></tr>
+        </table>
+
+        <p style="font-size:.9rem;">Model de carcassa 3D per a les micro:bits: <a href="https://makerworld.com/en/models/2266234-micro-bit-modular-case-wearable-with-custom-pins" target="_blank" rel="noopener">makerworld.com</a>.</p>
+
+        <!-- 4) Enllaços ràpids durant la sessió -->
+        <h2>4. Durant la sessió</h2>
+        <a class="btn btn-secondary" href="marcador.html" target="_blank" rel="noopener">📊 Obre el marcador en directe</a>
+    </div>
+
+    <!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
+    <footer class="site-footer">
+        <img class="footer-logos-financament" src="../assets/logos/Logos-4.0.png" alt="Programa finançat pel Ministeri d’Educació, Formació Professional i Esports, amb el suport de la Generalitat de Catalunya">
+        <img class="footer-logo-mentories" src="../assets/logos/Logo-Mentories-4.0-1.png" alt="Logo Mentories 4.0">
+        <p>Micro:bitada Penedès 2026 és un projecte desenvolupat pel grup de treball i mentors del Baix Penedès i actualitzat pels mentors i mentores del ST Penedès. Està sota la llicència <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ca" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>. Podeu copiar, distribuir i adaptar l’obra sempre que se’n reconegui l’autoria, no se’n faci un ús comercial, i les obres derivades es distribueixin sota la mateixa llicència.</p>
+    </footer>
+
+</div>
+
+<script>
+    // ================================================================
+    // CONFIGURACIÓ
+    // ================================================================
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJb0pHUdsrC6waMVTxeE8tXwZI_rsts_KVWpqf4hN3LFrZbuHx4j-KS9_ohYqktY80/exec";
+    // Contrasenya dissuasiva: no és seguretat real (viatja al codi del navegador),
+    // només vol evitar que l'alumnat hi entri per curiositat.
+    const CONTRASENYA = "GTRoboticaBP2026";
+    const SESSIO_KEY = "microbitada_docent_auth";
+
+    // ================================================================
+    // PANTALLA D'ACCÉS
+    // ================================================================
+    function comprovarContrasenya() {
+        const valor = document.getElementById('password-input').value;
+        if (valor === CONTRASENYA) {
+            sessionStorage.setItem(SESSIO_KEY, "1");
+            mostrarPanel();
+        } else {
+            document.getElementById('password-error').textContent = "Contrasenya incorrecta.";
+        }
+    }
+
+    function mostrarPanel() {
+        document.getElementById('gate').classList.add('hidden');
+        document.getElementById('panel').classList.remove('hidden');
+    }
+
+    // Si ja es va introduir la contrasenya correcta abans en aquesta mateixa
+    // pestanya del navegador, no cal tornar-la a demanar.
+    try {
+        if (sessionStorage.getItem(SESSIO_KEY) === "1") mostrarPanel();
+    } catch (err) { /* sessionStorage no disponible: no passa res, es demana la contrasenya */ }
+
+    // ================================================================
+    // GENERAR CODI DE SESSIÓ (acció "crearSessio" al backend)
+    // ================================================================
+    async function generarCodi() {
+        const escola = document.getElementById('input-escola').value.trim();
+        const comarca = document.getElementById('input-comarca').value;
+        const curs = document.getElementById('input-curs').value;
+        const errorEl = document.getElementById('sessio-error');
+        errorEl.textContent = "";
+
+        if (!escola) { errorEl.textContent = "Cal el nom de l'escola."; return; }
+        if (!comarca) { errorEl.textContent = "Cal seleccionar la comarca."; return; }
+        if (!curs) { errorEl.textContent = "Cal seleccionar el curs."; return; }
+
+        const btn = document.getElementById('btn-generar');
+        btn.disabled = true;
+        btn.textContent = "Generant...";
+        try {
+            const params = new URLSearchParams({ action: 'crearSessio', escola, comarca, curs });
+            const res = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`).then(r => r.json());
+            if (!res.ok) {
+                errorEl.textContent = res.error || "No s'ha pogut generar el codi.";
+                return;
+            }
+            document.getElementById('codi-gran').textContent = res.codi;
+            document.getElementById('codi-resultat').classList.remove('hidden');
+        } catch (err) {
+            errorEl.textContent = "No s'ha pogut contactar amb el servidor. Comprova la connexió i torna-ho a provar.";
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Genera el codi de sessió";
+        }
+    }
+
+    function reiniciarFormulariSessio() {
+        document.getElementById('codi-resultat').classList.add('hidden');
+        document.getElementById('input-escola').value = "";
+        document.getElementById('input-comarca').selectedIndex = 0;
+        document.getElementById('input-curs').selectedIndex = 0;
+        document.getElementById('input-escola').focus();
+    }
+</script>
+
+</body>
+</html>
