@@ -276,7 +276,8 @@
     // només vol evitar que l'alumnat hi entri per curiositat.
     const CONTRASENYA = "GTRoboticaBP2026";
     const SESSIO_KEY = "microbitada_docent_auth";
-    const SESSIO_DADES_KEY = "microbitada_docent_sessio"; // recorda el darrer codi generat, per si es recarrega la pàgina
+    const SESSIO_DADES_KEY = "microbitada_docent_sessio"; // recorda el darrer codi generat, encara que es tanqui el navegador
+    const HORES_CADUCITAT_CODI_LOCAL = 12; // ha de coincidir amb HORES_CADUCITAT_CODI del backend (Code.gs)
 
     // ================================================================
     // PANTALLA D'ACCÉS
@@ -297,19 +298,25 @@
         recuperarSessioDesada();
     }
 
-    // Si ja s'havia generat un codi abans (encara dins d'aquesta pestanya del
-    // navegador), el tornem a mostrar en comptes de deixar el formulari buit:
-    // recarregar la pàgina no ha de fer "perdre" el codi que s'acaba de donar
-    // a l'alumnat.
+    // Si ja s'havia generat un codi abans (encara que s'hagi tancat la
+    // pestanya o el navegador), el tornem a mostrar en comptes de deixar el
+    // formulari buit: sortir i tornar a entrar a la pàgina no ha de fer
+    // "perdre" el codi que s'acaba de donar a l'alumnat. Fem servir
+    // localStorage (no sessionStorage) perquè sessionStorage s'esborra en
+    // tancar la pestanya/navegador, que és exactament el cas que volem cobrir.
     function recuperarSessioDesada() {
         try {
-            const desada = JSON.parse(sessionStorage.getItem(SESSIO_DADES_KEY) || "null");
-            if (desada && desada.codi) {
-                document.getElementById('codi-gran').textContent = desada.codi;
-                document.getElementById('codi-resultat').classList.remove('hidden');
-                actualitzarEnllaçMarcador(desada.codi);
+            const desada = JSON.parse(localStorage.getItem(SESSIO_DADES_KEY) || "null");
+            if (!desada || !desada.codi) return;
+            const massaVell = desada.timestamp && (Date.now() - desada.timestamp) > HORES_CADUCITAT_CODI_LOCAL * 60 * 60 * 1000;
+            if (massaVell) {
+                localStorage.removeItem(SESSIO_DADES_KEY);
+                return;
             }
-        } catch (err) { /* sessionStorage no disponible: no passa res */ }
+            document.getElementById('codi-gran').textContent = desada.codi;
+            document.getElementById('codi-resultat').classList.remove('hidden');
+            actualitzarEnllaçMarcador(desada.codi);
+        } catch (err) { /* localStorage no disponible: no passa res */ }
     }
 
     function actualitzarEnllaçMarcador(codi) {
@@ -350,8 +357,8 @@
             document.getElementById('codi-gran').textContent = res.codi;
             document.getElementById('codi-resultat').classList.remove('hidden');
             try {
-                sessionStorage.setItem(SESSIO_DADES_KEY, JSON.stringify({ codi: res.codi, escola, comarca, curs }));
-            } catch (err) { /* sessionStorage no disponible: el codi només es veurà mentre no es recarregui */ }
+                localStorage.setItem(SESSIO_DADES_KEY, JSON.stringify({ codi: res.codi, escola, comarca, curs, timestamp: Date.now() }));
+            } catch (err) { /* localStorage no disponible: el codi només es veurà mentre no es recarregui la pàgina */ }
             actualitzarEnllaçMarcador(res.codi);
         } catch (err) {
             errorEl.textContent = "No s'ha pogut contactar amb el servidor. Comprova la connexió i torna-ho a provar.";
@@ -367,7 +374,7 @@
         document.getElementById('input-comarca').selectedIndex = 0;
         document.getElementById('input-curs').selectedIndex = 0;
         document.getElementById('input-escola').focus();
-        try { sessionStorage.removeItem(SESSIO_DADES_KEY); } catch (err) { /* no passa res */ }
+        try { localStorage.removeItem(SESSIO_DADES_KEY); } catch (err) { /* no passa res */ }
         actualitzarEnllaçMarcador("");
     }
 </script>

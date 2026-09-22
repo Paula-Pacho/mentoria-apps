@@ -122,7 +122,7 @@
         // el banner gran perquè l'alumnat el pugui llegir i copiar.
         try {
             const res = await fetch(`${APPS_SCRIPT_URL}?action=validarCodi&codi=${encodeURIComponent(valor)}`).then(r => r.json());
-            if (res.ok) {
+            if (res.ok && res.escola) {
                 escolaFiltreActual = res.escola;
                 document.getElementById('banner-codi-valor').textContent = valor.toUpperCase();
                 bannerCodi.classList.remove('hidden');
