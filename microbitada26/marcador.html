@@ -245,7 +245,13 @@
 
         const araMs = Date.now();
         const grups = dades.grups.filter(g => {
-            if ((g.escola || '').trim().toLowerCase() !== escolaFiltre) return false;
+            if (codiActual) {
+                // Filtre per codi de sessió exacte: distingeix sessions
+                // diferents encara que siguin de la mateixa escola.
+                if ((g.codi || '').trim().toUpperCase() !== codiActual) return false;
+            } else if ((g.escola || '').trim().toLowerCase() !== escolaFiltre) {
+                return false;
+            }
             const actMs = new Date(g.actualitzat).getTime();
             if (isNaN(actMs)) return true;
             return (araMs - actMs) < HORES_CADUCITAT * 3600 * 1000;
