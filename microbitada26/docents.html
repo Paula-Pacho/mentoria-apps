@@ -195,24 +195,24 @@
         <div id="codi-resultat" class="hidden">
             <p style="margin:0 0 .5rem; color:var(--dark);">Codi de la sessió d'avui:</p>
             <div class="codi-gran" id="codi-gran"></div>
-            <p style="margin:.8rem 0 0; font-size:.85rem; color:#666;">Digueu-lo en veu alta o escriviu-lo a la pissarra. Cada grup l'ha d'introduir a la pantalla inicial del joc en comptes del nom de l'escola.</p>
+            <p style="margin:.8rem 0 0; font-size:.85rem; color:#666;">Cada grup l'ha d'introduir a la pantalla inicial del joc en comptes del nom de l'escola. El botó "Obre el marcador en directe" et permet mostrar el codi de registre a l'alumnat automàticament.</p>
             <button class="btn btn-secondary" onclick="reiniciarFormulariSessio()">Genera'n un altre</button>
         </div>
         <p class="error" id="sessio-error"></p>
 
         <!-- 2) Guia didàctica -->
-        <h2>2. Guia didàctica i solucions</h2>
-        <p>Conté l'explicació completa de cada repte, les solucions per a l'alumnat i les imatges del repte 2. Només accessible amb compte de correu xtec.</p>
+        <h2>2. Guia didàctica</h2>
+        <p>Conté l'explicació completa de cada repte i funcionament de l'activitat. Només accessible amb compte de correu xtec.</p>
         <!-- TODO: substituir aquest enllaç quan el PDF estigui penjat a Drive amb accés restringit a xtec -->
         <a class="btn btn-secondary" href="#" target="_blank" rel="noopener" title="Pendent: cal l'enllaç de Google Drive">📄 Obre la guia didàctica (Drive) — enllaç pendent</a>
 
         <!-- 3) Pas a pas d'instal·lació -->
         <h2>3. Pas a pas: instal·lar els codis a les micro:bits</h2>
-        <p>Abans de la sessió cal flashejar cada micro:bit descodificadora amb el seu programa MakeCode. Aquests enllaços són els mateixos que ja teniu a la guia didàctica, recollits aquí perquè els tingueu tots a mà.</p>
+        <p>Abans de la sessió cal carregar cada micro:bit descodificadora amb el seu programa MakeCode. Aquests enllaços són els mateixos que ja teniu a la guia didàctica, recollits aquí perquè els tingueu tots a mà.</p>
 
-        <div class="nota">Com flashejar: obriu l'enllaç a <a href="https://makecode.microbit.org/" target="_blank" rel="noopener">makecode.microbit.org</a>, connecteu la micro:bit per USB i premeu "Baixa" (o arrossegueu el fitxer .hex descarregat sobre la unitat MICROBIT si l'ordinador no té WebUSB). Comproveu que cada carcassa de color porta la micro:bit amb el número de grup correcte.</div>
+        <div class="nota">Com flashejar: obriu l'enllaç a <a href="https://makecode.microbit.org/" target="_blank" rel="noopener">makecode.microbit.org</a>, connecteu la micro:bit per USB i premeu "Baixa" (o arrossegueu el fitxer .hex descarregat sobre la unitat MICROBIT si l'ordinador no té WebUSB). Marqueu cada micro:bit descodificadora amb el numero de grup corresponent.</div>
 
-        <h3 style="color:var(--dark); font-size:1rem;">Descodificadores dels grups (una per grup, es fan servir als reptes 1, 2, 4 i 5)</h3>
+        <h3 style="color:var(--dark); font-size:1rem;">Descodificadores dels grups</h3>
         <table class="guia">
             <tr><th>Grup</th><th>Enllaç MakeCode</th></tr>
             <tr><td>1</td><td><a href="https://makecode.microbit.org/_2wV05DhD2Dcj" target="_blank" rel="noopener">Obre el programa</a></td></tr>
@@ -254,8 +254,9 @@
         <p style="font-size:.9rem;">Model de carcassa 3D per a les micro:bits: <a href="https://makerworld.com/en/models/2266234-micro-bit-modular-case-wearable-with-custom-pins" target="_blank" rel="noopener">makerworld.com</a>.</p>
 
         <!-- 4) Enllaços ràpids durant la sessió -->
-        <h2>4. Durant la sessió</h2>
+        <h2>4. Durant la sessió - Marcador en viu i solucions</h2>
         <a class="btn btn-secondary" id="link-marcador" href="marcador.html" target="_blank" rel="noopener">📊 Obre el marcador en directe</a>
+        /*Aquí afegir els 5 botos dels 5 reptes per afegir imatge a les solucions.* Pregunta: com carregar imatges sense que es tingui des del repositori de git?*/
     </div>
 
     <!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
