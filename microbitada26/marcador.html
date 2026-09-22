@@ -42,6 +42,11 @@
        des de lluny (pantalla projectada) i el copiï per registrar el seu grup */
     .banner-codi { max-width: 500px; margin: 0 auto 1.5rem; text-align: center; background: var(--dark); color: white; border-radius: 12px; padding: 1rem 1.5rem; font-size: 1.1rem; }
     .banner-codi span { font-family: 'Courier New', monospace; font-weight: bold; font-size: 2rem; letter-spacing: .15em; color: var(--secondary); margin-left: .5rem; }
+    /* Compte enrere de la durada prevista de l'activitat (opcional, el
+       configura el/la docent en generar el codi de sessió) */
+    .banner-durada { max-width: 500px; margin: 0 auto 1.5rem; text-align: center; background: #eaf3fc; border: 2px solid var(--primary); border-radius: 12px; padding: .8rem 1.5rem; font-size: 1rem; color: var(--dark); }
+    .banner-durada .valor { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.8rem; margin-left: .5rem; }
+    .banner-durada.esgotat { background: #fdecea; border-color: var(--danger); color: var(--danger); }
     /* Peu de pàgina (igual a totes les pàgines) */
     .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
     .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
@@ -58,6 +63,7 @@
 
 <!-- Banner amb el codi de sessió, visible només quan el filtre s'ha introduït com a codi -->
 <div id="banner-codi" class="banner-codi hidden">Codi de sessió:<span id="banner-codi-valor"></span></div>
+<div id="banner-durada" class="banner-durada hidden"></div>
 
 <!-- Filtre: es pot escriure el codi de sessió (recomanat) o el nom exacte de l'escola -->
 <div class="filtre">
@@ -94,6 +100,14 @@
     // Nom d'escola ja resolt (a partir d'un codi de sessió o escrit literalment) amb
     // què es filtren les targetes; es recalcula cada cop que es prem "Mostrar".
     let escolaFiltreActual = "";
+    // Compte enrere de la durada prevista (opcional): codiActual és el codi
+    // en majúscules amb què es va resoldre l'escola (per poder tornar a
+    // consultar validarCodi periòdicament); sessioDurada, en minuts, ve del
+    // que ha introduït el/la docent; sessioIniciat, en ms, és el moment en
+    // què el primer grup ha començat el Repte 1 (buit fins que passi).
+    let codiActual = "";
+    let sessioDurada = 0;
+    let sessioIniciat = null;
     if (params.get('codi')) {
         inputEscola.value = params.get('codi');
     } else if (params.get('escola')) {
@@ -109,7 +123,11 @@
 
         if (!valor) {
             escolaFiltreActual = "";
+            codiActual = "";
+            sessioDurada = 0;
+            sessioIniciat = null;
             bannerCodi.classList.add('hidden');
+            renderComptador();
             nova.searchParams.delete('escola');
             nova.searchParams.delete('codi');
             history.replaceState(null, '', nova);
@@ -124,8 +142,12 @@
             const res = await fetch(`${APPS_SCRIPT_URL}?action=validarCodi&codi=${encodeURIComponent(valor)}`).then(r => r.json());
             if (res.ok && res.escola) {
                 escolaFiltreActual = res.escola;
+                codiActual = valor.toUpperCase();
+                sessioDurada = Number(res.duradaMinuts) || 0;
+                sessioIniciat = res.iniciat ? new Date(res.iniciat).getTime() : null;
                 document.getElementById('banner-codi-valor').textContent = valor.toUpperCase();
                 bannerCodi.classList.remove('hidden');
+                renderComptador();
                 nova.searchParams.set('codi', valor.toUpperCase());
                 nova.searchParams.delete('escola');
                 history.replaceState(null, '', nova);
@@ -139,11 +161,60 @@
         // No és un codi vàlid: ho tractem com el nom (literal) de l'escola,
         // igual que fins ara.
         escolaFiltreActual = valor;
+        codiActual = "";
+        sessioDurada = 0;
+        sessioIniciat = null;
         bannerCodi.classList.add('hidden');
+        renderComptador();
         nova.searchParams.set('escola', valor);
         nova.searchParams.delete('codi');
         history.replaceState(null, '', nova);
         actualitza();
+    }
+
+    // ================================================================
+    // COMPTE ENRERE DE LA DURADA PREVISTA (opcional)
+    // ================================================================
+    // Torna a consultar validarCodi (només quan hi ha un codi actiu i una
+    // durada configurada) per detectar el moment en què "iniciat" passa de
+    // buit a tenir data, és a dir, quan el primer grup arriba al Repte 1.
+    async function refrescarComptador() {
+        if (!codiActual) return;
+        try {
+            const res = await fetch(`${APPS_SCRIPT_URL}?action=validarCodi&codi=${encodeURIComponent(codiActual)}`).then(r => r.json());
+            if (res.ok) {
+                sessioDurada = Number(res.duradaMinuts) || 0;
+                sessioIniciat = res.iniciat ? new Date(res.iniciat).getTime() : null;
+            }
+        } catch (err) {
+            // si falla, deixem el que ja sabíem i ho reintentem al proper cicle
+        }
+    }
+
+    // Pinta el banner del compte enrere a partir del que ja sabem en
+    // memòria (sessioDurada/sessioIniciat); no fa cap petició de xarxa,
+    // perquè es crida cada segon per refrescar el rellotge.
+    function renderComptador() {
+        const banner = document.getElementById('banner-durada');
+        if (!sessioDurada) {
+            banner.classList.add('hidden');
+            return;
+        }
+        banner.classList.remove('hidden');
+        if (!sessioIniciat) {
+            banner.classList.remove('esgotat');
+            banner.textContent = "El compte enrere començarà quan el primer grup comenci el Repte 1.";
+            return;
+        }
+        const restantMs = sessioIniciat + sessioDurada * 60000 - Date.now();
+        const esgotat = restantMs <= 0;
+        const totalSeg = Math.max(0, Math.round(restantMs / 1000));
+        const h = Math.floor(totalSeg / 3600);
+        const m = Math.floor((totalSeg % 3600) / 60);
+        const s = totalSeg % 60;
+        const text = (h > 0 ? String(h).padStart(2, '0') + ':' : '') + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        banner.classList.toggle('esgotat', esgotat);
+        banner.innerHTML = (esgotat ? "Temps esgotat: " : "Temps restant: ") + `<span class="valor">${text}</span>`;
     }
 
     // ================================================================
@@ -251,7 +322,8 @@
     // ARRENCADA: primera càrrega en obrir la pàgina + actualització automàtica
     // ================================================================
     carregarAra();
-    setInterval(actualitza, INTERVAL_MS);
+    setInterval(function () { refrescarComptador(); actualitza(); }, INTERVAL_MS);
+    setInterval(renderComptador, 1000);
 </script>
 </body>
 </html>

@@ -156,6 +156,7 @@ function obtenirOCrearFullEstat() {
  * "quin és l'estat actual de cada grup" sense haver de buscar entre un historial.
  */
 function registrarProgres(body) {
+  marcarIniciSessioSiCal(body.codi);
   const sheet = obtenirOCrearFullEstat();
   const dades = sheet.getDataRange().getValues();
   let indexFila = -1;
@@ -212,7 +213,17 @@ function obtenirOCrearFullSessions() {
   let sheet = ss.getSheetByName(SHEET_SESSIONS);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_SESSIONS);
-    sheet.appendRow(["codi", "escola", "comarca", "curs", "creat"]);
+    sheet.appendRow(["codi", "escola", "comarca", "curs", "creat", "duradaMinuts", "iniciat"]);
+  } else {
+    // Compatibilitat amb fulls "Sessions actives" creats abans d'afegir
+    // aquestes columnes (durada prevista de l'activitat i moment en què
+    // comença realment, quan el primer grup arriba al Repte 1).
+    if (sheet.getRange(1, 6).getValue() !== "duradaMinuts") {
+      sheet.getRange(1, 6).setValue("duradaMinuts");
+    }
+    if (sheet.getRange(1, 7).getValue() !== "iniciat") {
+      sheet.getRange(1, 7).setValue("iniciat");
+    }
   }
   return sheet;
 }
@@ -234,7 +245,8 @@ function crearSessio(params) {
       codi = generarCodiSessio();
     } while (existents.indexOf(codi) !== -1);
 
-    sheet.appendRow([codi, params.escola, params.comarca || "", params.curs || "", new Date()]);
+    const duradaMinuts = params.duradaMinuts ? Number(params.duradaMinuts) : "";
+    sheet.appendRow([codi, params.escola, params.comarca || "", params.curs || "", new Date(), duradaMinuts, ""]);
     return respondreJSON({ ok: true, codi: codi });
   } catch (err) {
     return respondreJSON({ ok: false, error: String(err) });
@@ -268,13 +280,41 @@ function validarCodi(params) {
           ok: true,
           escola: dades[i][1],
           comarca: dades[i][2],
-          curs: dades[i][3]
+          curs: dades[i][3],
+          duradaMinuts: dades[i][5] || "",
+          iniciat: dades[i][6] ? new Date(dades[i][6]).toISOString() : ""
         });
       }
     }
     return respondreJSON({ ok: false, error: "Codi no trobat. Comprova que el/la docent l'hagi generat avui." });
   } catch (err) {
     return respondreJSON({ ok: false, error: String(err) });
+  }
+}
+
+/**
+ * Marca el moment en què comença realment l'activitat per a un codi de
+ * sessió: la primera vegada que arriba un event 'progress' (el primer grup
+ * que comença el Repte 1), s'escriu la data actual a la columna "iniciat"
+ * de "Sessions actives". Si ja hi havia una data (altres grups ja havien
+ * començat abans), no es toca.
+ */
+function marcarIniciSessioSiCal(codi) {
+  if (!codi) return;
+  try {
+    const sheet = obtenirOCrearFullSessions();
+    const dades = sheet.getDataRange().getValues();
+    for (let i = 1; i < dades.length; i++) {
+      if (String(dades[i][0]).toUpperCase() === String(codi).toUpperCase()) {
+        if (!dades[i][6]) {
+          sheet.getRange(i + 1, 7).setValue(new Date());
+        }
+        return;
+      }
+    }
+  } catch (err) {
+    // Si falla (p. ex. codi no trobat per algun motiu estrany), no volem
+    // que això trenqui el registre normal del progrés del grup.
   }
 }
 

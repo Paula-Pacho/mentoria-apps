@@ -43,7 +43,7 @@
     h2 { color: var(--dark); font-size: 1.2rem; margin: 2.2rem 0 .8rem; border-bottom: 2px solid #eee; padding-bottom: .4rem; }
     h2:first-of-type { margin-top: 0; }
     label { display: block; font-weight: bold; color: var(--dark); margin: .8rem 0 .3rem; }
-    input[type="text"], select {
+    input[type="text"], input[type="number"], select {
         width: 100%;
         padding: 10px 12px;
         border: 1px solid #ccc;
@@ -51,6 +51,10 @@
         font-size: 1rem;
         font-family: inherit;
     }
+    /* "Durada prevista": dos camps petits (hores i minuts) en una mateixa fila */
+    .fila-durada { display: flex; gap: .8rem; align-items: flex-end; }
+    .fila-durada > div { flex: 1; }
+    .fila-durada label { margin-top: 0; }
     .btn {
         display: inline-block;
         padding: 12px 20px;
@@ -99,6 +103,12 @@
     table.guia th { background: #f4f6f8; color: var(--dark); }
     table.guia a { color: var(--primary); font-weight: bold; }
     .nota { background: #fff8e1; border-left: 4px solid var(--secondary); padding: .8rem 1rem; font-size: .9rem; color: #555; margin: .8rem 0 1.5rem; border-radius: 0 6px 6px 0; }
+
+    /* Botons ràpids "5) Codis de referència durant la sessió" */
+    .graella-reptes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .7rem; margin-top: .8rem; }
+    .btn-repte { display: block; text-align: center; background: white; color: var(--dark); border: 2px solid #ddd; border-radius: 8px; padding: .8rem .6rem; text-decoration: none; font-weight: bold; font-size: .9rem; }
+    .btn-repte:hover { border-color: var(--primary); }
+    .btn-repte small { display: block; font-weight: normal; color: #888; margin-top: .2rem; font-size: .8rem; }
 
     .site-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center; }
     .site-footer img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
@@ -190,6 +200,18 @@
             <option>3r d'ESO</option>
             <option>Altre</option>
         </select>
+        <label>Durada prevista de l'activitat (opcional)</label>
+        <div class="fila-durada">
+            <div>
+                <label for="input-durada-hores" style="font-weight:normal; font-size:.85rem;">Hores</label>
+                <input type="number" id="input-durada-hores" min="0" max="8" placeholder="0">
+            </div>
+            <div>
+                <label for="input-durada-minuts" style="font-weight:normal; font-size:.85rem;">Minuts</label>
+                <input type="number" id="input-durada-minuts" min="0" max="59" step="5" placeholder="0">
+            </div>
+        </div>
+        <p style="margin:.4rem 0 0; font-size:.85rem; color:#666;">Si l'ompliu, el marcador en viu mostrarà un compte enrere que comença quan el primer grup arribi al Repte 1. Deixeu-ho a 0 si no el voleu.</p>
         <button class="btn btn-primary" id="btn-generar" onclick="generarCodi()">Genera el codi de sessió</button>
 
         <div id="codi-resultat" class="hidden">
@@ -256,7 +278,20 @@
         <!-- 4) Enllaços ràpids durant la sessió -->
         <h2>4. Durant la sessió - Marcador en viu i solucions</h2>
         <a class="btn btn-secondary" id="link-marcador" href="marcador.html" target="_blank" rel="noopener">📊 Obre el marcador en directe</a>
-        /*Aquí afegir els 5 botos dels 5 reptes per afegir imatge a les solucions.* Pregunta: com carregar imatges sense que es tingui des del repositori de git?*/
+
+        <h3 style="color:var(--dark); font-size:1rem;">Codis de referència, per repte (accés ràpid)</h3>
+        <p style="font-size:.9rem; color:#666;">Captures del codi que ha de programar l'alumnat, per comprovar-ho d'un cop d'ull sense haver de buscar-ho a la guia. Es guarden a Drive (només compte xtec) i no al repositori públic de la web, perquè l'alumnat no hi pugui accedir mirant els fitxers del projecte.</p>
+        <div class="graella-reptes">
+            <!-- TODO: substituir aquest enllaç quan la captura del Repte 1 estigui penjada a Drive -->
+            <a class="btn-repte" href="#" target="_blank" rel="noopener" title="Pendent: cal l'enllaç de Google Drive">Repte 1<small>Compte enrere</small></a>
+            <a class="btn-repte" href="https://canva.link/56fx0olk80pvlpf" target="_blank" rel="noopener">Repte 2<small>Boques (Canva)</small></a>
+            <!-- TODO: substituir aquest enllaç quan la captura del Repte 3 estigui penjada a Drive -->
+            <a class="btn-repte" href="#" target="_blank" rel="noopener" title="Pendent: cal l'enllaç de Google Drive">Repte 3<small>Paraula amagada</small></a>
+            <!-- TODO: substituir aquest enllaç quan la captura del Repte 4 estigui penjada a Drive -->
+            <a class="btn-repte" href="#" target="_blank" rel="noopener" title="Pendent: cal l'enllaç de Google Drive">Repte 4<small>Hackeja el sistema</small></a>
+            <!-- TODO: substituir aquest enllaç quan la captura del Repte 5 estigui penjada a Drive -->
+            <a class="btn-repte" href="#" target="_blank" rel="noopener" title="Pendent: cal l'enllaç de Google Drive">Repte 5<small>Patró secret</small></a>
+        </div>
     </div>
 
     <!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
@@ -345,11 +380,17 @@
         if (!comarca) { errorEl.textContent = "Cal seleccionar la comarca."; return; }
         if (!curs) { errorEl.textContent = "Cal seleccionar el curs."; return; }
 
+        const hores = parseInt(document.getElementById('input-durada-hores').value, 10) || 0;
+        const minuts = parseInt(document.getElementById('input-durada-minuts').value, 10) || 0;
+        const duradaMinuts = hores * 60 + minuts;
+
         const btn = document.getElementById('btn-generar');
         btn.disabled = true;
         btn.textContent = "Generant...";
         try {
-            const params = new URLSearchParams({ action: 'crearSessio', escola, comarca, curs });
+            const paramsObj = { action: 'crearSessio', escola, comarca, curs };
+            if (duradaMinuts > 0) paramsObj.duradaMinuts = duradaMinuts;
+            const params = new URLSearchParams(paramsObj);
             const res = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`).then(r => r.json());
             if (!res.ok) {
                 errorEl.textContent = res.error || "No s'ha pogut generar el codi.";
@@ -374,6 +415,8 @@
         document.getElementById('input-escola').value = "";
         document.getElementById('input-comarca').selectedIndex = 0;
         document.getElementById('input-curs').selectedIndex = 0;
+        document.getElementById('input-durada-hores').value = "";
+        document.getElementById('input-durada-minuts').value = "";
         document.getElementById('input-escola').focus();
         try { localStorage.removeItem(SESSIO_DADES_KEY); } catch (err) { /* no passa res */ }
         actualitzarEnllaçMarcador("");
