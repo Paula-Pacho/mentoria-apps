@@ -99,7 +99,9 @@
     <!-- PANTALLA 2: registre del grup (número, mida, nivell i nom de l'equip) -->
     <div id="step-groups" class="hidden">
         <p style="color:var(--dark); font-weight:bold;">El/la docent us indicarà el número de grup (1-5) segons el material que us hagi repartit.</p>
-        <h2 id="group-title">Nom del Grup</h2>
+        <h2 id="group-title">Registre del grup</h2>
+        <label for="main-input" class="sr-only">Nom de l'equip</label>
+        <input type="text" id="main-input" placeholder="Ex: Els Súpers">
         <div id="group-number-zone">
             <label for="group-number-select">Número de grup (el que us ha indicat el/la docent)</label>
             <select id="group-number-select">
@@ -112,7 +114,7 @@
             </select>
         </div>
         <div id="group-size-zone">
-            <label for="group-size-select">Nombre de components del grup</label>
+            <label for="group-size-select">Quantitat de components del grup</label>
             <select id="group-size-select">
                 <option value="" selected disabled>Selecciona el nombre...</option>
                 <option value="1">1</option>
@@ -133,8 +135,6 @@
                 <option value="2">Nivell 2</option>
             </select>
         </div>
-        <label for="main-input" class="sr-only">Nom de l'equip</label>
-        <input type="text" id="main-input" placeholder="Ex: Els Súpers">
         <div style="margin-top:15px;">
             <button id="action-btn" class="btn-main" onclick="processLogic()">Següent</button>
         </div>
