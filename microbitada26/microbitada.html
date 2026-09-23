@@ -55,6 +55,16 @@
             .game-sidebar { flex: 1; min-width: 220px; position: sticky; top: 20px; }
             .viewer-container { min-height: 380px; }
             #display-timer { font-size: 3rem; }
+
+            /* Pantalla de joc en marxa: tots els alumnes fan servir Chromebook o similar
+               (pantalla ampla, sempre en horitzontal), aixi que deixem el contenidor
+               ocupar gairebe tota la finestra i la imatge de pista aprofitar tambe
+               l'alcada disponible (no nomes l'amplada), sense distorsionar-se. */
+            .container.game-active { max-width: 1800px; }
+            .container.game-active .game-sidebar { flex: 0 0 200px; min-width: 200px; }
+            .container.game-active .game-main { flex: 1; }
+            .container.game-active .viewer-container { min-height: 55vh; max-height: 72vh; }
+            .container.game-active .viewer-img { width: 100%; height: 100%; object-fit: contain; }
         }
         
         /* Candau: formulari per introduir la resposta (codi, paraula o patró) d'un repte */
@@ -434,6 +444,7 @@
     function initChallenge() {
         document.getElementById('step-start').classList.add('hidden');
         document.getElementById('step-challenge').classList.remove('hidden');
+        document.querySelector('.container').classList.add('game-active');
         activeReptoIdx = 0;
         imgWithinRepto = 0;
         GAME_FLOW.forEach(f => f.passed = false);
@@ -505,6 +516,7 @@
         document.getElementById('step-groups').classList.add('hidden');
         document.getElementById('step-start').classList.add('hidden');
         document.getElementById('step-challenge').classList.remove('hidden');
+        document.querySelector('.container').classList.add('game-active');
 
         updateViewer();
         clearInterval(timerInterval);
