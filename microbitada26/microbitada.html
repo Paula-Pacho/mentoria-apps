@@ -144,6 +144,9 @@
     <div id="step-start" class="hidden">
         <h2>Preparats, <span id="current-group-name"></span>?</h2>
 
+        <!-- Aquesta imatge (P1-P3) fa servir la mateixa mida que les de repte:
+             la classe "game-active" del contenidor ja s'afegeix en aquest pas
+             (processLogic mateix), no només en prémer START. -->
         <div class="viewer-container"><img src="" id="intro-img" class="viewer-img" alt=""></div>
 
         <div class="nav-buttons">
@@ -396,6 +399,9 @@
 
         document.getElementById('step-groups').classList.add('hidden');
         document.getElementById('step-start').classList.remove('hidden');
+        // Mateixa mida d'imatge que la pantalla de joc, ja des d'aquí (abans
+        // només s'afegia en prémer START, a initChallenge()).
+        document.querySelector('.container').classList.add('game-active');
         setupGroupStart(activeGroupIdx);
     }
 
