@@ -40,19 +40,22 @@
         .cell.active { background: var(--secondary); box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
         .cell:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
 
-        /* En pantalles més grans (tauletes, portàtils, projector) deixem créixer el contenidor
-           perquè la imatge de cada pista (que ja escala amb width:100%) es pugui veure més gran. */
-        @media (min-width: 900px) {
-            .container { max-width: 900px; }
-        }
+        /* Grup: petita etiqueta amb el numero de grup, visible durant tota la partida */
+        .group-badge { background: #eef4fb; border: 2px solid var(--primary); border-radius: 10px; padding: .6rem 1rem; font-weight: bold; color: var(--dark); margin-bottom: 15px; text-align: center; }
+        .group-badge .num { color: var(--primary); font-size: 1.3rem; }
 
-        /* Lightbox: ampliar la imatge de pista a pantalla completa en tocar-la */
-        .img-zoom-btn { background: none; border: none; padding: 0; margin: 0; display: block; width: 100%; cursor: zoom-in; }
-        .img-zoom-btn:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
-        .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
-        .lightbox img { max-width: 95vw; max-height: 90vh; object-fit: contain; display: block; }
-        .lightbox-close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: 50%; border: none; background: white; color: var(--dark); font-size: 1.3rem; line-height: 1; cursor: pointer; }
-        .lightbox-close:focus-visible { outline: 3px solid var(--secondary); outline-offset: 2px; }
+        /* Pantalla de joc: en movil tot va apilat (com fins ara). En tauleta/ordinador
+           (>=900px) es mostra en dues columnes: la imatge de pista a l'esquerra (mes
+           gran) i, a la dreta, el numero de grup, el rellotge i el boto d'acabar. */
+        .game-layout { display: block; }
+        @media (min-width: 900px) {
+            .container { max-width: 1000px; }
+            .game-layout { display: flex; gap: 28px; align-items: flex-start; }
+            .game-main { flex: 3; min-width: 0; }
+            .game-sidebar { flex: 1; min-width: 220px; position: sticky; top: 20px; }
+            .viewer-container { min-height: 380px; }
+            #display-timer { font-size: 3rem; }
+        }
         
         /* Candau: formulari per introduir la resposta (codi, paraula o patró) d'un repte */
         .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -146,11 +149,6 @@
 
     <!-- PANTALLA 4: el joc (cronòmetre, imatges de pista i candaus per introduir la resposta) -->
     <div id="step-challenge" class="hidden">
-        <!-- Acaba la partida abans d'hora (mostra la imatge F0) -->
-        <button class="btn-emergency" onclick="confirmEndSession()">Acaba la micro:bitada!</button>
-
-        <div id="display-timer">00:00</div>
-
         <!-- Es mostra només quan la partida ja ha acabat: enllaç de tornada a l'inici -->
         <div id="final-actions-zone" class="hidden">
             <a class="btn-tornar-header" href="https://microbitada.cat/index.html">← Torna a la pàgina principal</a>
@@ -167,30 +165,44 @@
             </div>
         </div>
 
-        <!-- Visor de les imatges de pista del repte actual -->
-        <div id="viewer-zone">
-            <div class="viewer-container"><button type="button" id="img-zoom-btn" class="img-zoom-btn" aria-label="Amplia la imatge a pantalla completa"><img src="" id="current-img" class="viewer-img"></button></div>
-            
-            <div id="navigation-zone" class="nav-buttons">
-                <button id="btn-prev" class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
-                <button id="btn-next" class="btn-nav" onclick="nav(1)">Endavant ➡</button>
-            </div>
-        </div>
+        <!-- En tauleta/ordinador (>=900px) es mostra en dues columnes: la imatge de
+             pista a l'esquerra i, a la dreta, el numero de grup, el rellotge i el
+             boto d'acabar. En movil va tot apilat, en aquest mateix ordre. -->
+        <div class="game-layout">
+            <div class="game-main">
+                <!-- Visor de les imatges de pista del repte actual -->
+                <div id="viewer-zone">
+                    <div class="viewer-container"><img src="" id="current-img" class="viewer-img"></div>
 
-        <!-- Candau: es mostra quan s'han vist totes les imatges de pista del repte actual -->
-        <div id="lock-zone" class="lock-box hidden">
-            <h3 id="lock-title">🔒 REPTE BLOQUEJAT</h3>
-            <div id="ui-code-container">
-                <label for="code-input" class="sr-only">Resposta del repte</label>
-                <input type="text" id="code-input" placeholder="Escriu aquí...">
-                <button class="btn-main" onclick="validateLock()">VERIFICAR</button>
+                    <div id="navigation-zone" class="nav-buttons">
+                        <button id="btn-prev" class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
+                        <button id="btn-next" class="btn-nav" onclick="nav(1)">Endavant ➡</button>
+                    </div>
+                </div>
+
+                <!-- Candau: es mostra quan s'han vist totes les imatges de pista del repte actual -->
+                <div id="lock-zone" class="lock-box hidden">
+                    <h3 id="lock-title">🔒 REPTE BLOQUEJAT</h3>
+                    <div id="ui-code-container">
+                        <label for="code-input" class="sr-only">Resposta del repte</label>
+                        <input type="text" id="code-input" placeholder="Escriu aquí...">
+                        <button class="btn-main" onclick="validateLock()">VERIFICAR</button>
+                    </div>
+                    <div id="ui-matrix-container" class="hidden">
+                        <div class="grid-5x5" id="matrix-grid" role="group" aria-label="Quadrícula de patró 5x5. Activa les caselles per reproduir el patró."></div>
+                        <button class="btn-main" onclick="validateLock()">VERIFICAR PATRÓ</button>
+                    </div>
+                    <div class="lock-footer">
+                        <button class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
+                    </div>
+                </div>
             </div>
-            <div id="ui-matrix-container" class="hidden">
-                <div class="grid-5x5" id="matrix-grid" role="group" aria-label="Quadrícula de patró 5x5. Activa les caselles per reproduir el patró."></div>
-                <button class="btn-main" onclick="validateLock()">VERIFICAR PATRÓ</button>
-            </div>
-            <div class="lock-footer">
-                <button class="btn-nav" onclick="nav(-1)">⬅ Tornar a la pista</button>
+
+            <div class="game-sidebar">
+                <div id="group-badge" class="group-badge">Grup <span id="group-num-display" class="num"></span></div>
+                <div id="display-timer">00:00</div>
+                <!-- Acaba la partida abans d'hora (mostra la imatge F0) -->
+                <button class="btn-emergency" onclick="confirmEndSession()">Acaba la micro:bitada!</button>
             </div>
         </div>
     </div>
@@ -201,12 +213,6 @@
     <img class="footer-logo-mentories" src="../assets/logos/Logo-Mentories-4.0-1.png" alt="Logo Mentories 4.0">
     <p>Micro:bitada Penedès 2026 és un projecte desenvolupat pel grup de treball i mentors del Baix Penedès i actualitzat pels mentors i mentores del ST Penedès. Està sota la llicència <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ca" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>. Podeu copiar, distribuir i adaptar l’obra sempre que se’n reconegui l’autoria, no se’n faci un ús comercial, i les obres derivades es distribueixin sota la mateixa llicència.</p>
 </footer>
-</div>
-
-<!-- Finestra per veure la imatge de pista ampliada a pantalla completa -->
-<div id="img-lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Imatge ampliada">
-    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Tanca la imatge ampliada">✕</button>
-    <img id="lightbox-img" src="" alt="">
 </div>
 
 <script>
@@ -301,33 +307,6 @@
             }
         });
     }
-
-    // ================================================================
-    // AMPLIAR IMATGE A PANTALLA COMPLETA (lightbox)
-    // ================================================================
-    const imgZoomBtn = document.getElementById('img-zoom-btn');
-    const lightbox = document.getElementById('img-lightbox');
-    const lightboxImg = document.getElementById('lightbox-img');
-    const lightboxClose = document.getElementById('lightbox-close');
-
-    function tancaLightboxAmbEsc(e) {
-        if (e.key === 'Escape') tancarLightbox();
-    }
-    function obrirLightbox() {
-        lightboxImg.src = document.getElementById('current-img').src;
-        lightbox.classList.remove('hidden');
-        lightboxClose.focus();
-        document.addEventListener('keydown', tancaLightboxAmbEsc);
-    }
-    function tancarLightbox() {
-        lightbox.classList.add('hidden');
-        lightboxImg.src = "";
-        document.removeEventListener('keydown', tancaLightboxAmbEsc);
-        imgZoomBtn.focus();
-    }
-    imgZoomBtn.addEventListener('click', obrirLightbox);
-    lightboxClose.addEventListener('click', tancarLightbox);
-    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) tancarLightbox(); });
 
     // ================================================================
     // QUADRÍCULA 5x5 (es genera un cop, es fa servir als reptes de tipus "matrix")
@@ -556,6 +535,9 @@
     }
 
     function updateViewer() {
+        const grupBadgeEl = document.getElementById('group-num-display');
+        if (grupBadgeEl) grupBadgeEl.textContent = currentGroupNum;
+
         const repte = GAME_FLOW[activeReptoIdx];
 
         if(imgWithinRepto >= repte.images.length) {
