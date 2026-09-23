@@ -28,7 +28,7 @@
         .btn-main { background-color: var(--primary); color: white; }
         .btn-start { background-color: var(--success); color: var(--dark); font-size: 1.5rem; }
         .btn-nav { background-color: var(--dark); color: white; }
-        .btn-emergency { background-color: var(--danger); color: white; margin-bottom: 15px; width: 100%; }
+        .btn-emergency { background-color: var(--danger); color: white; width: auto; margin-bottom: 0; padding: 10px 22px; }
         /* Visor: on es veuen les imatges de pista i, al final, la imatge de resultat (F0/F1) */
         .viewer-container { background: #000; border-radius: 10px; margin: 20px 0; overflow: hidden; min-height: 250px; display: flex; align-items: center; justify-content: center; }
         .viewer-img { width: 100%; height: auto; display: block; }
@@ -40,36 +40,32 @@
         .cell.active { background: var(--secondary); box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
         .cell:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
 
-        /* Grup: petita etiqueta amb el numero de grup, visible durant tota la partida */
-        .group-badge { background: #eef4fb; border: 2px solid var(--primary); border-radius: 10px; padding: .6rem 1rem; font-weight: bold; color: var(--dark); margin-bottom: 15px; text-align: center; }
-        .group-badge .num { color: var(--primary); font-size: 1.3rem; }
+        /* Barra superior de la pantalla de joc: grup, rellotge i boto d'acabar
+           en una fila horitzontal (abans anaven en columna a la dreta), perque
+           ocupi poca alcada i deixi el maxim d'espai per a la imatge de pista. */
+        .game-topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; margin-bottom: 15px; }
+        .group-badge { background: #eef4fb; border: 2px solid var(--primary); border-radius: 10px; padding: .5rem 1rem; font-weight: bold; color: var(--dark); text-align: center; }
+        .group-badge .num { color: var(--primary); font-size: 1.2rem; }
 
-        /* Pantalla de joc: en movil tot va apilat (com fins ara). En tauleta/ordinador
-           (>=900px) es mostra en dues columnes: la imatge de pista a l'esquerra (mes
-           gran) i, a la dreta, el numero de grup, el rellotge i el boto d'acabar. */
+        /* Pantalla de joc: tot l'alumnat fa servir Chromebook/portatil (pantalla
+           ampla, sempre en horitzontal). La imatge de pista ocupa sempre tota
+           l'amplada disponible amb una ALCADA FIXA (no min/max: amb una alcada
+           no definida, l'atribut height:100% de la imatge no es podia resoldre
+           i acabava tallada per l'overflow:hidden del contenidor). */
         .game-layout { display: block; }
         @media (min-width: 900px) {
             .container { max-width: 1000px; }
-            .game-layout { display: flex; gap: 28px; align-items: flex-start; }
-            .game-main { flex: 3; min-width: 0; }
-            .game-sidebar { flex: 1; min-width: 220px; position: sticky; top: 20px; }
-            .viewer-container { min-height: 380px; }
-            #display-timer { font-size: 3rem; }
+            .viewer-container { height: 55vh; }
+            .viewer-img { width: 100%; height: 100%; object-fit: contain; }
 
-            /* Pantalla de joc en marxa: tots els alumnes fan servir Chromebook o similar
-               (pantalla ampla, sempre en horitzontal), aixi que deixem el contenidor
-               ocupar gairebe tota la finestra i la imatge de pista aprofitar tambe
-               l'alcada disponible (no nomes l'amplada), sense distorsionar-se. */
+            /* Pantalla de joc en marxa: encara mes ample i amb mes alcada per a la imatge */
             .container.game-active { max-width: 1800px; }
-            .container.game-active .game-sidebar { flex: 0 0 200px; min-width: 200px; }
-            .container.game-active .game-main { flex: 1; }
-            .container.game-active .viewer-container { min-height: 55vh; max-height: 72vh; }
-            .container.game-active .viewer-img { width: 100%; height: 100%; object-fit: contain; }
+            .container.game-active .viewer-container { height: 62vh; }
         }
         
         /* Candau: formulari per introduir la resposta (codi, paraula o patró) d'un repte */
         .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        #display-timer { font-size: 2.5rem; font-family: monospace; color: var(--danger); margin: 10px 0; }
+        #display-timer { font-size: 1.8rem; font-family: monospace; color: var(--danger); margin: 0; }
         #code-input { width: 80%; text-align: center; font-size: 1.5rem; }
         .lock-footer { margin-top: 20px; width: 100%; display: flex; justify-content: flex-start; }
         /* Resum final: es mostra un cop acabada la partida (F0 o F1) */
@@ -175,44 +171,41 @@
             </div>
         </div>
 
-        <!-- En tauleta/ordinador (>=900px) es mostra en dues columnes: la imatge de
-             pista a l'esquerra i, a la dreta, el numero de grup, el rellotge i el
-             boto d'acabar. En movil va tot apilat, en aquest mateix ordre. -->
+        <!-- Barra horitzontal amb el numero de grup, el rellotge i el boto
+             d'acabar, i a sota la imatge de pista a tota l'amplada. -->
         <div class="game-layout">
-            <div class="game-main">
-                <!-- Visor de les imatges de pista del repte actual -->
-                <div id="viewer-zone">
-                    <div class="viewer-container"><img src="" id="current-img" class="viewer-img"></div>
-
-                    <div id="navigation-zone" class="nav-buttons">
-                        <button id="btn-prev" class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
-                        <button id="btn-next" class="btn-nav" onclick="nav(1)">Endavant ➡</button>
-                    </div>
-                </div>
-
-                <!-- Candau: es mostra quan s'han vist totes les imatges de pista del repte actual -->
-                <div id="lock-zone" class="lock-box hidden">
-                    <h3 id="lock-title">🔒 REPTE BLOQUEJAT</h3>
-                    <div id="ui-code-container">
-                        <label for="code-input" class="sr-only">Resposta del repte</label>
-                        <input type="text" id="code-input" placeholder="Escriu aquí...">
-                        <button class="btn-main" onclick="validateLock()">VERIFICAR</button>
-                    </div>
-                    <div id="ui-matrix-container" class="hidden">
-                        <div class="grid-5x5" id="matrix-grid" role="group" aria-label="Quadrícula de patró 5x5. Activa les caselles per reproduir el patró."></div>
-                        <button class="btn-main" onclick="validateLock()">VERIFICAR PATRÓ</button>
-                    </div>
-                    <div class="lock-footer">
-                        <button class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="game-sidebar">
+            <div class="game-topbar">
                 <div id="group-badge" class="group-badge">Grup <span id="group-num-display" class="num"></span></div>
                 <div id="display-timer">00:00</div>
                 <!-- Acaba la partida abans d'hora (mostra la imatge F0) -->
                 <button class="btn-emergency" onclick="confirmEndSession()">Acaba la micro:bitada!</button>
+            </div>
+
+            <!-- Visor de les imatges de pista del repte actual -->
+            <div id="viewer-zone">
+                <div class="viewer-container"><img src="" id="current-img" class="viewer-img"></div>
+
+                <div id="navigation-zone" class="nav-buttons">
+                    <button id="btn-prev" class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
+                    <button id="btn-next" class="btn-nav" onclick="nav(1)">Endavant ➡</button>
+                </div>
+            </div>
+
+            <!-- Candau: es mostra quan s'han vist totes les imatges de pista del repte actual -->
+            <div id="lock-zone" class="lock-box hidden">
+                <h3 id="lock-title">🔒 REPTE BLOQUEJAT</h3>
+                <div id="ui-code-container">
+                    <label for="code-input" class="sr-only">Resposta del repte</label>
+                    <input type="text" id="code-input" placeholder="Escriu aquí...">
+                    <button class="btn-main" onclick="validateLock()">VERIFICAR</button>
+                </div>
+                <div id="ui-matrix-container" class="hidden">
+                    <div class="grid-5x5" id="matrix-grid" role="group" aria-label="Quadrícula de patró 5x5. Activa les caselles per reproduir el patró."></div>
+                    <button class="btn-main" onclick="validateLock()">VERIFICAR PATRÓ</button>
+                </div>
+                <div class="lock-footer">
+                    <button class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
+                </div>
             </div>
         </div>
     </div>
