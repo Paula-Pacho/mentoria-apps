@@ -353,7 +353,7 @@ function obtenirFullRespostes() {
   sheet.appendRow([
     "Marca de temps", "Escola", "Grup", "Temps total",
     "Temps repte 1", "Temps repte 2", "Temps repte 3", "Temps repte 4", "Temps repte 5",
-    "Número de grup", "Nivell", "Comarca", "Curs"
+    "Número de grup", "Nivell", "Comarca", "Curs", "Components"
   ]);
   return sheet;
 }
@@ -361,7 +361,7 @@ function obtenirFullRespostes() {
 /**
  * Afegeix la fila final a "Sessions finalitzades" amb el resultat de la partida
  * (Marca de temps, Escola, Grup, Temps, Temps repte 1..5, Número de grup, Nivell,
- * Comarca, Curs).
+ * Comarca, Curs, Components).
  */
 function registrarRespostaFinal(body) {
   const sheet = obtenirFullRespostes();
@@ -381,6 +381,9 @@ function registrarRespostaFinal(body) {
   }
   if (sheet.getRange(1, 13).getValue() !== "Curs") {
     sheet.getRange(1, 13).setValue("Curs");
+  }
+  if (sheet.getRange(1, 14).getValue() !== "Components") {
+    sheet.getRange(1, 14).setValue("Components");
   }
   // Temps i Temps repte 1-5 (columnes D-I) són text "mm:ss", no hores reals.
   // Formatem cada columna per separat (no "D:I" de cop): en aquest full
@@ -407,7 +410,8 @@ function registrarRespostaFinal(body) {
     body.numGrup || "",
     body.nivell || "",
     body.comarca || "",
-    body.curs || ""
+    body.curs || "",
+    body.numComponents || ""
   ];
   // NO fem servir sheet.appendRow() aquí: aquesta pestanya prové d'un Google
   // Form i els fulls vinculats a un Form restringeixen accions "a nivell de
@@ -433,6 +437,7 @@ function obtenirResum() {
     const perCurs = {};
     const perComarca = {};
     let totalGrups = 0;
+    let totalAlumnes = 0;
     let totalReptesResolts = 0;
     let sumaSegons = 0;
     let sessionsAmbTemps = 0;
@@ -450,6 +455,9 @@ function obtenirResum() {
       const comarca = fila[idx["Comarca"]] || "Sense especificar";
       perComarca[comarca] = (perComarca[comarca] || 0) + 1;
 
+      const components = parseInt(fila[idx["Components"]], 10);
+      if (!isNaN(components)) totalAlumnes += components;
+
       for (let n = 1; n <= 5; n++) {
         if (fila[idx["Temps repte " + n]]) totalReptesResolts++;
       }
@@ -465,6 +473,7 @@ function obtenirResum() {
       ok: true,
       totalEscoles: Object.keys(escoles).length,
       totalGrups: totalGrups,
+      totalAlumnes: totalAlumnes,
       perCurs: perCurs,
       perComarca: perComarca,
       totalReptesResolts: totalReptesResolts,

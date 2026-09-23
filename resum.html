@@ -50,6 +50,14 @@
     .barra-fons { background: #eee; border-radius: 6px; height: 14px; overflow: hidden; }
     .barra-plena { background: var(--primary); height: 100%; border-radius: 6px; }
 
+    /* Llegenda de colors per distingir Primària/Secundària/Altres al gràfic "Grups per curs" */
+    .llegenda-nivells { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .8rem; color: #666; margin-bottom: .6rem; }
+    .llegenda-item { display: inline-flex; align-items: center; gap: 5px; }
+    .llegenda-punt { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .llegenda-punt.nivell-primaria, .barra-plena.nivell-primaria { background: var(--success); }
+    .llegenda-punt.nivell-secundaria, .barra-plena.nivell-secundaria { background: var(--secondary); }
+    .llegenda-punt.nivell-altres, .barra-plena.nivell-altres { background: #95a5a6; }
+
     .btn-tornar { display: inline-block; margin-bottom: 1rem; color: var(--dark); text-decoration: none; font-weight: bold; font-size: .95rem; }
     .btn-tornar:hover { text-decoration: underline; }
 
@@ -80,14 +88,17 @@
         <div class="targetes">
             <div class="targeta"><div class="num" id="num-escoles">–</div><div class="etiqueta">Escoles participants</div></div>
             <div class="targeta"><div class="num" id="num-grups">–</div><div class="etiqueta">Grups que han jugat</div></div>
+            <div class="targeta"><div class="num" id="num-alumn">–</div><div class="etiqueta">Alumnes participants</div></div>
             <div class="targeta"><div class="num" id="num-reptes">–</div><div class="etiqueta">Reptes resolts</div></div>
             <div class="targeta"><div class="num" id="num-temps">–</div><div class="etiqueta">Temps mitjà de partida</div></div>
         </div>
 
-        <h2>Primària / Secundària</h2>
-        <div id="barres-nivell"></div>
-
         <h2>Grups per curs</h2>
+        <div class="llegenda-nivells">
+            <span class="llegenda-item"><span class="llegenda-punt nivell-primaria"></span>Primària</span>
+            <span class="llegenda-item"><span class="llegenda-punt nivell-secundaria"></span>Secundària</span>
+            <span class="llegenda-item"><span class="llegenda-punt nivell-altres"></span>Altres</span>
+        </div>
         <div id="barres-curs"></div>
 
         <h2>Grups per comarca</h2>
@@ -111,32 +122,32 @@
     // ================================================================
     // DIBUIXAR UN GRUP DE BARRES a partir d'un objecte {etiqueta: comptador}
     // ================================================================
-    function dibuixarBarres(contenidorId, dades) {
+    // "colorPerEtiqueta" és opcional: si es dóna, torna una classe CSS (nivell-primaria,
+    // nivell-secundaria, nivell-altres) que pinta la barra d'un color diferent segons l'etiqueta.
+    function dibuixarBarres(contenidorId, dades, colorPerEtiqueta) {
         const contenidor = document.getElementById(contenidorId);
         contenidor.innerHTML = "";
         const entrades = Object.entries(dades).sort((a, b) => b[1] - a[1]);
         const maxim = Math.max(...entrades.map(e => e[1]), 1);
         entrades.forEach(([etiqueta, valor]) => {
+            const classeNivell = colorPerEtiqueta ? `nivell-${colorPerEtiqueta(etiqueta)}` : '';
             const fila = document.createElement('div');
             fila.className = 'barra-fila';
             fila.innerHTML = `
                 <div class="barra-etiqueta"><span>${etiqueta}</span><span>${valor}</span></div>
-                <div class="barra-fons"><div class="barra-plena" style="width:${Math.round(valor / maxim * 100)}%"></div></div>
+                <div class="barra-fons"><div class="barra-plena ${classeNivell}" style="width:${Math.round(valor / maxim * 100)}%"></div></div>
             `;
             contenidor.appendChild(fila);
         });
     }
 
     // Un curs "5è de Primària"/"6è de Primària" compta com a Primària; qualsevol
-    // cosa amb "ESO" compta com a Secundària; la resta cau a "Altres".
-    function classificarNivell(perCurs) {
-        const nivells = { "Primària": 0, "Secundària": 0, "Altres": 0 };
-        Object.entries(perCurs).forEach(([curs, valor]) => {
-            if (/primària/i.test(curs)) nivells["Primària"] += valor;
-            else if (/eso/i.test(curs)) nivells["Secundària"] += valor;
-            else nivells["Altres"] += valor;
-        });
-        return nivells;
+    // cosa amb "ESO" compta com a Secundària; la resta cau a "Altres". Es fa
+    // servir per pintar cada barra de "Grups per curs" amb el color del seu nivell.
+    function nivellDeCurs(curs) {
+        if (/primària/i.test(curs)) return 'primaria';
+        if (/eso/i.test(curs)) return 'secundaria';
+        return 'altres';
     }
 
     function formatarTemps(totalSegons) {
@@ -165,11 +176,11 @@
 
             document.getElementById('num-escoles').textContent = res.totalEscoles;
             document.getElementById('num-grups').textContent = res.totalGrups;
+            document.getElementById('num-alumn').textContent = res.totalAlumnes;
             document.getElementById('num-reptes').textContent = `${res.totalReptesResolts} / ${res.totalReptesPossibles}`;
             document.getElementById('num-temps').textContent = formatarTemps(res.mitjanaTempsSegons);
 
-            dibuixarBarres('barres-nivell', classificarNivell(res.perCurs || {}));
-            dibuixarBarres('barres-curs', res.perCurs || {});
+            dibuixarBarres('barres-curs', res.perCurs || {}, nivellDeCurs);
             dibuixarBarres('barres-comarca', res.perComarca || {});
 
             document.getElementById('contingut').classList.remove('hidden');
