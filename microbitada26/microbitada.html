@@ -55,8 +55,8 @@
         .game-layout { display: block; }
         @media (min-width: 900px) {
             .container { max-width: 1000px; }
-            .viewer-container { height: 55vh; }
-            .viewer-img { width: 100%; height: 100%; object-fit: contain; }
+            .viewer-container { height: 55vh; width: fit-content; max-width: 100%; margin-left: auto; margin-right: auto; }
+            .viewer-img { width: auto; height: 100%; max-width: 100%; object-fit: contain; }
 
             /* Pantalla de joc en marxa: encara mes ample i amb mes alcada per a la imatge */
             .container.game-active { max-width: 1800px; }
@@ -618,6 +618,18 @@
         imgWithinRepto = Math.max(0, Math.min(maxIdx, imgWithinRepto + dir));
         updateViewer();
     }
+
+    // Tambe es pot navegar entre les imatges de pista amb les fletxes del
+    // teclat (nomes durant la partida en marxa, i no si s'esta escrivint
+    // en un camp de text, per no interferir amb el cursor).
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (document.getElementById('step-challenge').classList.contains('hidden')) return;
+        if (!document.getElementById('final-actions-zone').classList.contains('hidden')) return;
+        const tag = (document.activeElement && document.activeElement.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        nav(e.key === 'ArrowLeft' ? -1 : 1);
+    });
 
     // ================================================================
     // FINALITZACIÓ DE LA PARTIDA (botó d'emergència o repte 5 resolt)
