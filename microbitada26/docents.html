@@ -217,6 +217,7 @@
         <div id="codi-resultat" class="hidden">
             <p style="margin:0 0 .5rem; color:var(--dark);">Codi de la sessió d'avui:</p>
             <div class="codi-gran" id="codi-gran"></div>
+            <p style="margin:.6rem 0 0; font-size:.85rem; color:#b45309;" id="codi-caducitat"></p>
             <p style="margin:.8rem 0 0; font-size:.85rem; color:#666;">Cada grup l'ha d'introduir a la pantalla inicial del joc en comptes del nom de l'escola. El botó "Obre el marcador en directe" et permet mostrar el codi de registre a l'alumnat automàticament.</p>
             <button class="btn btn-secondary" onclick="reiniciarFormulariSessio()">Genera'n un altre</button>
         </div>
@@ -351,8 +352,24 @@
             }
             document.getElementById('codi-gran').textContent = desada.codi;
             document.getElementById('codi-resultat').classList.remove('hidden');
+            mostrarCaducitatCodi(desada.timestamp);
             actualitzarEnllaçMarcador(desada.codi);
         } catch (err) { /* localStorage no disponible: no passa res */ }
+    }
+
+    // Mostra quan caduca el codi, a partir del moment en què es va generar
+    // ("generatEn", en ms): reutilitza HORES_CADUCITAT_CODI_LOCAL, que ja
+    // s'havia de mantenir sincronitzat amb HORES_CADUCITAT_CODI del backend.
+    // Nota: la neteja real a "Sessions actives" és horària (vegeu Code.gs),
+    // així que en el pitjor cas el codi pot sobreviure fins a ~1h més tard.
+    function mostrarCaducitatCodi(generatEn) {
+        const el = document.getElementById('codi-caducitat');
+        if (!el || !generatEn) return;
+        const caduca = new Date(generatEn + HORES_CADUCITAT_CODI_LOCAL * 60 * 60 * 1000);
+        const ara = new Date();
+        const hora = caduca.toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' });
+        const mateixDia = caduca.toDateString() === ara.toDateString();
+        el.textContent = `⏱ Aquest codi caduca ${mateixDia ? 'avui' : 'demà'} a les ${hora}.`;
     }
 
     function actualitzarEnllaçMarcador(codi) {
@@ -396,10 +413,12 @@
                 errorEl.textContent = res.error || "No s'ha pogut generar el codi.";
                 return;
             }
+            const araMs = Date.now();
             document.getElementById('codi-gran').textContent = res.codi;
             document.getElementById('codi-resultat').classList.remove('hidden');
+            mostrarCaducitatCodi(araMs);
             try {
-                localStorage.setItem(SESSIO_DADES_KEY, JSON.stringify({ codi: res.codi, escola, comarca, curs, timestamp: Date.now() }));
+                localStorage.setItem(SESSIO_DADES_KEY, JSON.stringify({ codi: res.codi, escola, comarca, curs, timestamp: araMs }));
             } catch (err) { /* localStorage no disponible: el codi només es veurà mentre no es recarregui la pàgina */ }
             actualitzarEnllaçMarcador(res.codi);
         } catch (err) {
