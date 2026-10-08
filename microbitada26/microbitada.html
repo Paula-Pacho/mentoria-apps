@@ -258,13 +258,14 @@
     // 08/10/2026: s'ha intercanviat l'ordre de joc dels antics "Repte 3" i
     // "Repte 4" (l'alumnat surt al pati per la paraula de 6 lletres al 4t
     // repte en lloc del 3r, perquè només quedi el Repte 5 pendent en tornar
-    // del pati). Els noms d'imatge (R3_*/R4_*) es mantenen tal qual: són
-    // noms interns, no numeració visible, per això no calia renombrar-los.
+    // del pati). Les imatges s'han regenerat amb el número de repte nou ja
+    // imprès a la pròpia captura, així que R3_*/R4_* tornen a coincidir amb
+    // el número de repte (R3_* = "Hackeja el sistema", R4_* = pati).
     const GAME_FLOW = [
         { images: ['R1_1', 'R1_2', 'R1_3'],          type: 'code',   key: 'c4',   title: "Codi de 4 xifres" },
         { images: ['R2_1', 'R2_2', 'R2_3'],          type: 'matrix', key: 'p1',   title: "Patró 5x5 (1)" },
-        { images: ['R4_1', 'R4_2', 'R4_3'],          type: 'code',   key: 'c3',   title: "Codi de 3 xifres" },
-        { images: ['R3_1', 'R3_2', 'R3_3'],          type: 'code',   key: 'word', title: "Paraula de 6 lletres" },
+        { images: ['R3_1', 'R3_2', 'R3_3'],          type: 'code',   key: 'c3',   title: "Codi de 3 xifres" },
+        { images: ['R4_1', 'R4_2', 'R4_3'],          type: 'code',   key: 'word', title: "Paraula de 6 lletres" },
         { images: ['R5_1', 'R5_2', 'R5_3', 'R5_4'],  type: 'matrix', key: 'p2',   title: "Patró 5x5 Final" }
     ];
 
