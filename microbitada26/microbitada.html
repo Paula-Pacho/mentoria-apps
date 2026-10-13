@@ -67,7 +67,18 @@
         .lock-box { background: #fff3cd; padding: 25px; border: 2px dashed #ffc107; border-radius: 10px; margin: 15px 0; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #display-timer { font-size: 1.8rem; font-family: monospace; color: var(--danger); margin: 0; }
         #code-input { width: 80%; text-align: center; font-size: 1.5rem; }
-        .lock-footer { margin-top: 20px; width: 100%; display: flex; justify-content: flex-start; }
+        .lock-footer { margin-top: 20px; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .btn-tutorial { background-color: #fff; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-tutorial:focus-visible, .tutorial-close:focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; }
+        /* Tutorial "Com carrego el codi a la micro:bit?": finestra superposada amb les imatges T1-T6 */
+        .tutorial-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 12px; }
+        .tutorial-dialog { background: #fff; border-radius: 12px; padding: 16px; width: 100%; max-width: 1100px; max-height: 96vh; display: flex; flex-direction: column; gap: 10px; }
+        .tutorial-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .tutorial-header h3 { margin: 0; color: var(--dark); font-size: 1.1rem; }
+        .tutorial-close { background: var(--danger); color: white; padding: 8px 16px; }
+        .tutorial-img-wrap { background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; }
+        .tutorial-img-wrap img { max-width: 100%; max-height: 72vh; width: auto; height: auto; display: block; object-fit: contain; }
+        .tutorial-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         /* Resum final: es mostra un cop acabada la partida (F0 o F1) */
         .summary-box { background:#f8f9fa; border:2px solid #ddd; border-radius:10px; padding:15px 20px; margin: 15px 0; text-align:left; }
         .summary-box h3 { margin-top:0; color:var(--dark); }
@@ -100,7 +111,7 @@
     <div id="step-groups" class="hidden">
         <p style="color:var(--dark); font-weight:bold;">El/la docent us indicarà el número de grup (1-5) segons el material que us hagi repartit.</p>
         <h2 id="group-title">Registre del grup</h2>
-        <label for="main-input" class="sr-only">Nom de l'equip</label>
+        <label for="main-input" class="sr-only">Poseu nom al vostre grup i escriviu-lo aquí...</label>
         <input type="text" id="main-input" placeholder="Escriviu el vostre nom d'equip">
         <div id="group-number-zone">
             <label for="group-number-select">Número de grup (el que us ha indicat el/la docent)</label>
@@ -114,9 +125,9 @@
             </select>
         </div>
         <div id="group-size-zone">
-            <label for="group-size-select">Quantitat de components del grup</label>
+            <label for="group-size-select">Nombre de participants:</label>
             <select id="group-size-select">
-                <option value="" selected disabled>Selecciona el nombre...</option>
+                <option value="" selected disabled>Quantes persones sou al grup?</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>
@@ -128,7 +139,7 @@
             </select>
         </div>
         <div id="group-level-zone">
-            <label for="group-level-select">Nivell de dificultat</label>
+            <label for="group-level-select">Nivell de dificultat:</label>
             <select id="group-level-select">
                 <option value="" selected disabled>Selecciona el nivell...</option>
                 <option value="1">Nivell 1</option>
@@ -208,7 +219,23 @@
                 </div>
                 <div class="lock-footer">
                     <button class="btn-nav" onclick="nav(-1)">⬅ Enrere</button>
+                    <button class="btn-tutorial" onclick="obreTutorial()">📘 Com carrego el codi a la micro:bit?</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial de càrrega del codi a la micro:bit (imatges T1-T6), obert des del botó del candau -->
+    <div id="tutorial-overlay" class="tutorial-overlay hidden">
+        <div class="tutorial-dialog" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+            <div class="tutorial-header">
+                <h3 id="tutorial-title">Com carregar el codi a la micro:bit — <span id="tutorial-pas"></span></h3>
+                <button class="tutorial-close" onclick="tancaTutorial()">✖ Tanca</button>
+            </div>
+            <div class="tutorial-img-wrap"><img src="" id="tutorial-img" alt=""></div>
+            <div class="tutorial-nav">
+                <button id="tutorial-prev" class="btn-nav" onclick="tutorialNav(-1)">⬅ Enrere</button>
+                <button id="tutorial-next" class="btn-nav" onclick="tutorialNav(1)">Endavant ➡</button>
             </div>
         </div>
     </div>
@@ -647,6 +674,56 @@
         imgWithinRepto = Math.max(0, Math.min(maxIdx, imgWithinRepto + dir));
         updateViewer();
     }
+
+    // ================================================================
+    // TUTORIAL "Com carrego el codi a la micro:bit?" (imatges T1..T6)
+    // ================================================================
+    const TUTORIAL_IMAGES = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
+    let tutorialIdx = 0;
+    let tutorialFocusPrevi = null;
+
+    function tutorialObert() {
+        return !document.getElementById('tutorial-overlay').classList.contains('hidden');
+    }
+
+    function obreTutorial() {
+        tutorialIdx = 0;
+        tutorialFocusPrevi = document.activeElement;
+        document.getElementById('tutorial-overlay').classList.remove('hidden');
+        mostraTutorial();
+        document.querySelector('.tutorial-close').focus();
+    }
+
+    function tancaTutorial() {
+        document.getElementById('tutorial-overlay').classList.add('hidden');
+        if (tutorialFocusPrevi && tutorialFocusPrevi.focus) tutorialFocusPrevi.focus();
+    }
+
+    function tutorialNav(dir) {
+        tutorialIdx = Math.max(0, Math.min(TUTORIAL_IMAGES.length - 1, tutorialIdx + dir));
+        mostraTutorial();
+    }
+
+    function mostraTutorial() {
+        const total = TUTORIAL_IMAGES.length;
+        const img = document.getElementById('tutorial-img');
+        img.src = `${BASE_URL}/${TUTORIAL_IMAGES[tutorialIdx]}.jpg`;
+        img.alt = `Tutorial per carregar el codi a la micro:bit, pas ${tutorialIdx + 1} de ${total}`;
+        document.getElementById('tutorial-pas').textContent = `${tutorialIdx + 1} de ${total}`;
+        document.getElementById('tutorial-prev').style.visibility = (tutorialIdx === 0) ? 'hidden' : 'visible';
+        document.getElementById('tutorial-next').style.visibility = (tutorialIdx === total - 1) ? 'hidden' : 'visible';
+    }
+
+    // Esc tanca el tutorial; les fletxes el naveguen (i no toquen les imatges de pista del darrere).
+    document.addEventListener('keydown', (e) => {
+        if (!tutorialObert()) return;
+        if (e.key === 'Escape') { tancaTutorial(); }
+        else if (e.key === 'ArrowLeft') { tutorialNav(-1); }
+        else if (e.key === 'ArrowRight') { tutorialNav(1); }
+        else return;
+        e.stopImmediatePropagation();
+        e.preventDefault();
+    }, true);
 
     // Tambe es pot navegar entre les imatges de pista amb les fletxes del
     // teclat (nomes durant la partida en marxa, i no si s'esta escrivint
