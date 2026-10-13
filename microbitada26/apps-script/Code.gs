@@ -27,6 +27,7 @@ const SHEET_RESPOSTES = "Sessions finalitzades"; // pestanya on queden totes les
 const SHEET_ESTAT = "Estat en viu";
 const SHEET_SESSIONS = "Sessions actives"; // pestanya amb els codis de sessió que genera el/la docent
 const HORES_CADUCITAT = 4; // hores sense actualitzar-se a partir de les quals una sessió es considera abandonada
+const ESTATS_FINALS = ["Acabat", "Interromput"]; // estats d'"Estat en viu" d'una partida que ja ha enviat el resultat final
 const HORES_CADUCITAT_CODI = 12; // hores a partir de les quals un codi de sessió es descarta si no s'ha fet servir
 
 // GET amb ?action=progress|finish : el joc avisa d'un canvi d'estat.
@@ -70,7 +71,11 @@ function doGet(e) {
 // quan s'acaba la partida)
 // ================================================================
 function gestionarEvent(dadesOriginals) {
+  // Bloqueig: evita que dues peticions simultànies (o la neteja horària)
+  // llegeixin i escriguin el full alhora i es trepitgin les files.
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(20000);
     const dades = Object.assign({}, dadesOriginals, {
       tempsReptes: typeof dadesOriginals.tempsReptes === "string"
         ? dadesOriginals.tempsReptes.split(",")
@@ -82,21 +87,30 @@ function gestionarEvent(dadesOriginals) {
     } else if (dades.action === "finish") {
       // La partida s'acaba (repte 5 superat o botó "Acaba la micro:bitada!"):
       // el resultat final queda escrit a "Sessions finalitzades" i a
-      // "Estat en viu" perquè el marcador el continuï mostrant com a acabat.
-      registrarRespostaFinal(dades);
-      registrarProgres(Object.assign({}, dades, { estat: "Acabat" }));
+      // "Estat en viu" perquè el marcador el continuï mostrant:
+      //   "Acabat"      -> s'han assolit tots els reptes
+      //   "Interromput" -> s'ha parat abans (botó d'emergència)
+      // Si aquesta sessió ja havia enviat el "finish" (reintent, doble clic),
+      // no tornem a escriure a l'historial.
+      if (ESTATS_FINALS.indexOf(estatDeSessio(dades.sessionId)) === -1) {
+        registrarRespostaFinal(dades);
+      }
+      const completat = Number(dades.retoActual) >= Number(dades.totalReptes);
+      registrarProgres(Object.assign({}, dades, { estat: completat ? "Acabat" : "Interromput" }));
     } else {
       return respondreJSON({ ok: false, error: "acció desconeguda: " + dades.action });
     }
     return respondreJSON({ ok: true });
   } catch (err) {
     return respondreJSON({ ok: false, error: String(err) });
+  } finally {
+    lock.releaseLock();
   }
 }
 
 // ================================================================
-// RESPOSTA AL MARCADOR: retorna l'estat de tots els grups en curs
-// (tot el contingut, ara mateix, del full "Estat en viu")
+// RESPOSTA AL MARCADOR: retorna l'estat de tots els grups (en curs i acabats
+// recentment: tot el contingut, ara mateix, del full "Estat en viu")
 // ================================================================
 function llegirEstat() {
   const sheet = obtenirOCrearFullEstat();
@@ -162,6 +176,13 @@ function registrarProgres(body) {
   for (let i = 1; i < dades.length; i++) {
     if (dades[i][0] === body.sessionId) { indexFila = i + 1; break; }
   }
+  // Un "progress" endarrerit (xarxa lenta, reintent) no ha de ressuscitar una
+  // partida que ja ha acabat: si la fila ja és final i l'event no porta un
+  // estat explícit, el descartem.
+  if (indexFila !== -1 && !body.estat &&
+      ESTATS_FINALS.indexOf(dades[indexFila - 1][6]) !== -1) {
+    return;
+  }
   const valorsFila = [
     body.sessionId,
     body.escola,
@@ -182,6 +203,15 @@ function registrarProgres(body) {
   } else {
     sheet.getRange(indexFila, 1, 1, valorsFila.length).setValues([valorsFila]);
   }
+}
+
+/** Retorna l'"estat" de la fila d'aquesta sessió a "Estat en viu", o null si no hi és. */
+function estatDeSessio(sessionId) {
+  const dades = obtenirOCrearFullEstat().getDataRange().getValues();
+  for (let i = 1; i < dades.length; i++) {
+    if (dades[i][0] === sessionId) return dades[i][6];
+  }
+  return null;
 }
 
 // ================================================================
@@ -488,14 +518,24 @@ function mmssASegons(text) {
  * hores sense actualitzar-se es considera abandonada (el dispositiu es va
  * tancar, es va perdre la connexió, etc. abans de prémer el botó de
  * finalitzar). La traslladem a "Sessions finalitzades" i l'eliminem
- * d'"Estat en viu". Les partides ja acabades s'eliminen sense tornar-les
- * a registrar a l'historial.
+ * d'"Estat en viu". Les partides ja acabades o interrompudes (ESTATS_FINALS)
+ * s'eliminen sense tornar-les a registrar a l'historial.
  * De passada, neteja també els codis de sessió caducats (netejarCodisCaducats).
  *
  * Pensada per executar-se automàticament cada hora (veure installarTriggerNeteja).
  * No fa res si no hi ha cap sessió ni codi caducat.
  */
 function netejarSessionsCaducades() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    netejarSessionsCaducadesSenseBloqueig_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function netejarSessionsCaducadesSenseBloqueig_() {
   const sheet = obtenirOCrearFullEstat();
   const valors = sheet.getDataRange().getValues();
   if (valors.length < 2) {
@@ -516,7 +556,7 @@ function netejarSessionsCaducades() {
     const actualitzat = obj.actualitzat instanceof Date ? obj.actualitzat : new Date(obj.actualitzat);
     if (isNaN(actualitzat.getTime()) || (ara - actualitzat) < limitMs) continue;
 
-    if (obj.estat !== "Acabat") {
+    if (ESTATS_FINALS.indexOf(obj.estat) === -1) {
       registrarRespostaFinal({
         escola: obj.escola,
         grup: obj.grup,

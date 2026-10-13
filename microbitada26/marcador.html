@@ -280,9 +280,10 @@
             const actual = g.retoActual || 0;
             const pct = Math.max(0, Math.min(100, Math.round((actual / total) * 100)));
             const acabat = g.estat === 'Acabat';
+            const interromput = g.estat === 'Interromput';
 
             const targeta = document.createElement('div');
-            targeta.className = 'targeta' + (acabat ? ' acabat' : '');
+            targeta.className = 'targeta' + ((acabat || interromput) ? ' acabat' : '');
 
             const header = document.createElement('div');
             header.className = 'targeta-header';
@@ -312,8 +313,10 @@
             const meta = document.createElement('div');
             meta.className = 'meta';
             const spanReptes = document.createElement('span');
-            spanReptes.textContent = acabat ? 'Acabat 🏆' : `Repte ${actual} de ${total}`;
-            if (acabat) spanReptes.className = 'estat-final';
+            spanReptes.textContent = acabat ? 'Acabat 🏆'
+                : interromput ? `Aturat al repte ${actual} de ${total}`
+                : `Repte ${actual} de ${total}`;
+            if (acabat || interromput) spanReptes.className = 'estat-final';
             const spanTemps = document.createElement('span');
             spanTemps.textContent = formatTemps(g.tempsTotal);
             meta.appendChild(spanReptes);
