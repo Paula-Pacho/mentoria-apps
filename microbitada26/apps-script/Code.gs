@@ -81,11 +81,10 @@ function gestionarEvent(dadesOriginals) {
       registrarProgres(dades);
     } else if (dades.action === "finish") {
       // La partida s'acaba (repte 5 superat o botó "Acaba la micro:bitada!"):
-      // el resultat final queda escrit a "Sessions finalitzades" i la fila
-      // d'aquesta sessió desapareix d'"Estat en viu", perquè aquesta pestanya
-      // només mostri partides realment en curs.
+      // el resultat final queda escrit a "Sessions finalitzades" i a
+      // "Estat en viu" perquè el marcador el continuï mostrant com a acabat.
       registrarRespostaFinal(dades);
-      eliminarDeEstatEnViu(dades.sessionId);
+      registrarProgres(Object.assign({}, dades, { estat: "Acabat" }));
     } else {
       return respondreJSON({ ok: false, error: "acció desconeguda: " + dades.action });
     }
@@ -117,7 +116,7 @@ function respondreJSON(obj) {
 }
 
 // ================================================================
-// FULL "Estat en viu" (una fila per cada partida EN CURS ara mateix)
+// FULL "Estat en viu" (partides en curs i les acabades recentment)
 // ================================================================
 function obtenirOCrearFullEstat() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -152,8 +151,8 @@ function obtenirOCrearFullEstat() {
 
 /**
  * Insereix o actualitza (per sessionId) la fila d'aquest grup a "Estat en viu".
- * Com que és una única fila per partida en curs, el marcador sempre pot llegir
- * "quin és l'estat actual de cada grup" sense haver de buscar entre un historial.
+ * El marcador llegeix aquí l'estat actual i el resultat de les partides acabades
+ * recentment, sense haver de buscar entre l'historial.
  */
 function registrarProgres(body) {
   marcarIniciSessioSiCal(body.codi);
@@ -182,23 +181,6 @@ function registrarProgres(body) {
     sheet.appendRow(valorsFila);
   } else {
     sheet.getRange(indexFila, 1, 1, valorsFila.length).setValues([valorsFila]);
-  }
-}
-
-/**
- * Elimina d'"Estat en viu" la fila d'aquesta sessió (si hi és). Es fa servir
- * quan una partida acaba, perquè aquesta pestanya només reflecteixi partides
- * realment en curs; el resultat final ja ha quedat escrit a
- * "Sessions finalitzades" abans de cridar aquesta funció.
- */
-function eliminarDeEstatEnViu(sessionId) {
-  const sheet = obtenirOCrearFullEstat();
-  const dades = sheet.getDataRange().getValues();
-  for (let i = 1; i < dades.length; i++) {
-    if (dades[i][0] === sessionId) {
-      sheet.deleteRow(i + 1); // +1: dades[0] és la capçalera (fila 1 del full)
-      break;
-    }
   }
 }
 
@@ -506,7 +488,8 @@ function mmssASegons(text) {
  * hores sense actualitzar-se es considera abandonada (el dispositiu es va
  * tancar, es va perdre la connexió, etc. abans de prémer el botó de
  * finalitzar). La traslladem a "Sessions finalitzades" i l'eliminem
- * d'"Estat en viu", perquè el marcador només mostri partides realment actives.
+ * d'"Estat en viu". Les partides ja acabades s'eliminen sense tornar-les
+ * a registrar a l'historial.
  * De passada, neteja també els codis de sessió caducats (netejarCodisCaducats).
  *
  * Pensada per executar-se automàticament cada hora (veure installarTriggerNeteja).
@@ -533,16 +516,18 @@ function netejarSessionsCaducades() {
     const actualitzat = obj.actualitzat instanceof Date ? obj.actualitzat : new Date(obj.actualitzat);
     if (isNaN(actualitzat.getTime()) || (ara - actualitzat) < limitMs) continue;
 
-    registrarRespostaFinal({
-      escola: obj.escola,
-      grup: obj.grup,
-      tempsTotal: obj.tempsTotal,
-      tempsReptes: ["", "", "", "", ""], // no sabem el detall per repte d'una sessió abandonada
-      numGrup: obj.numGrup,
-      nivell: obj.nivell,
-      comarca: obj.comarca,
-      curs: obj.curs
-    });
+    if (obj.estat !== "Acabat") {
+      registrarRespostaFinal({
+        escola: obj.escola,
+        grup: obj.grup,
+        tempsTotal: obj.tempsTotal,
+        tempsReptes: ["", "", "", "", ""], // no sabem el detall per repte d'una sessió abandonada
+        numGrup: obj.numGrup,
+        nivell: obj.nivell,
+        comarca: obj.comarca,
+        curs: obj.curs
+      });
+    }
 
     sheet.deleteRow(i + 1); // +1: valors[0] és la capçalera (fila 1 del full)
   }
