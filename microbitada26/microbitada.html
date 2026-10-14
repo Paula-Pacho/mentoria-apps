@@ -210,7 +210,7 @@
                 <h3 id="lock-title">🔒 REPTE BLOQUEJAT</h3>
                 <div id="ui-code-container">
                     <label for="code-input" class="sr-only">Resposta del repte</label>
-                    <input type="text" id="code-input" placeholder="Escriu aquí...">
+                    <input type="text" id="code-input" placeholder="Escriu aquí..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
                     <button class="btn-main" onclick="validateLock()">VERIFICAR</button>
                 </div>
                 <div id="ui-matrix-container" class="hidden">
@@ -641,7 +641,9 @@
             const target = keys[repte.key];
             isCorrect = selected.length === target.length && selected.every(v => target.includes(v));
         } else {
-            const input = document.getElementById('code-input').value.trim().toUpperCase();
+            const campCodi = document.getElementById('code-input');
+            const input = campCodi.value.trim().toUpperCase();
+            campCodi.value = ""; // no deixem la resposta escrita al camp, correcta o no
             isCorrect = (input === keys[repte.key]);
         }
 
@@ -782,6 +784,17 @@
         document.getElementById('session-summary-zone').classList.remove('hidden');
         document.getElementById('final-actions-zone').classList.remove('hidden');
     }
+
+    // Neteja de respostes escrites: ni la resposta d'un repte ni el patró 5x5 han
+    // de quedar al navegador (ni restaurats en recarregar, ni en tornar enrere
+    // des de la memòria cau de pàgines) perquè un grup posterior que faci servir
+    // el mateix ordinador no les pugui veure.
+    function netejaRespostes() {
+        document.getElementById('code-input').value = "";
+        document.querySelectorAll('.cell').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
+    }
+    netejaRespostes();
+    window.addEventListener('pageshow', netejaRespostes);
 
     tryRestoreProgress();
 </script>
