@@ -44,6 +44,9 @@
     .banner-codi span { font-family: 'Courier New', monospace; font-weight: bold; font-size: 2rem; letter-spacing: .15em; color: var(--secondary); margin-left: .5rem; }
     /* Compte enrere de la durada prevista de l'activitat (opcional, el
        configura el/la docent en generar el codi de sessió) */
+    .banner-codi small { display: block; margin-top: .3rem; font-size: .95rem; opacity: .85; }
+    /* Un bloc per codi de sessió (si el docent en té més d'un d'actiu) */
+    .bloc-sessio { margin-bottom: 2.5rem; }
     .banner-durada { max-width: 500px; margin: 0 auto 1.5rem; text-align: center; background: #eaf3fc; border: 2px solid var(--primary); border-radius: 12px; padding: .8rem 1.5rem; font-size: 1rem; color: var(--dark); }
     .banner-durada .valor { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.8rem; margin-left: .5rem; }
     .banner-durada.esgotat { background: #fdecea; border-color: var(--danger); color: var(--danger); }
@@ -61,18 +64,15 @@
 <a class="btn-tornar" href="../index.html">← Torna al menú principal</a>
 <h1>🤖 Marcador en viu — micro:bitada</h1>
 
-<!-- Banner amb el codi de sessió, visible només quan el filtre s'ha introduït com a codi -->
-<div id="banner-codi" class="banner-codi hidden">Codi de sessió:<span id="banner-codi-valor"></span></div>
-<div id="banner-durada" class="banner-durada hidden"></div>
-
-<!-- Filtre: es pot escriure el codi de sessió (recomanat) o el nom exacte de l'escola -->
+<!-- Filtre: es poden escriure un o més codis de sessió separats per comes (recomanat) o el nom exacte de l'escola -->
 <div class="filtre">
-    <input type="text" id="escola-input" placeholder="Codi de sessió (o nom de l'escola)...">
+    <input type="text" id="escola-input" placeholder="Codi(s) de sessió (o nom de l'escola)...">
     <button onclick="carregarAra()">Mostrar</button>
 </div>
 
-<!-- Aquí s'hi generen, per JavaScript, les targetes d'un grup cada una -->
-<div id="graella" class="graella"></div>
+<p id="avis-codis" class="buit hidden" style="margin-top:-1rem; margin-bottom:1.5rem;"></p>
+<!-- Aquí s'hi generen, per JavaScript, un bloc per codi de sessió (banner del codi, compte enrere i targetes dels grups) -->
+<div id="sessions"></div>
 <p id="missatge-buit" class="buit hidden"></p>
 
 <!-- Peu de pàgina: logos de finançament i text de llicència (igual a totes les pàgines) -->
@@ -96,142 +96,240 @@
 
     const params = new URLSearchParams(location.search);
     const inputEscola = document.getElementById('escola-input');
-    const bannerCodi = document.getElementById('banner-codi');
-    // Nom d'escola ja resolt (a partir d'un codi de sessió o escrit literalment) amb
-    // què es filtren les targetes; es recalcula cada cop que es prem "Mostrar".
+    const contenidor = document.getElementById('sessions');
+    const missatgeBuit = document.getElementById('missatge-buit');
+    const avisCodis = document.getElementById('avis-codis');
+    // Nom d'escola escrit literalment (només si el filtre no és un o més codis de sessió).
     let escolaFiltreActual = "";
-    // Compte enrere de la durada prevista (opcional): codiActual és el codi
-    // en majúscules amb què es va resoldre l'escola (per poder tornar a
-    // consultar validarCodi periòdicament); sessioDurada, en minuts, ve del
-    // que ha introduït el/la docent; sessioIniciat, en ms, és el moment en
-    // què el primer grup ha començat el Repte 1 (buit fins que passi).
-    let codiActual = "";
-    let sessioDurada = 0;
-    let sessioIniciat = null;
+    // Sessions (codis) que s'estan mostrant. Pot haver-n'hi més d'una si el/la
+    // docent ha preparat dues aules seguides. Cada sessió porta el seu curs i el
+    // seu compte enrere: { codi, escola, curs, durada (min), iniciat (ms o null) }.
+    let sessions = [];
+    const FORMAT_CODI = /^[A-Za-z2-9]{4}$/;
+
+    function separaCodis(text) {
+        return text.split(/[\s,;]+/).filter(Boolean);
+    }
     if (params.get('codi')) {
-        inputEscola.value = params.get('codi');
+        inputEscola.value = separaCodis(params.get('codi')).join(', ');
     } else if (params.get('escola')) {
         inputEscola.value = params.get('escola');
     }
 
+    // Consulta un codi al backend; retorna la sessió o null si no existeix.
+    async function consultarCodi(codi) {
+        try {
+            const res = await fetch(`${APPS_SCRIPT_URL}?action=validarCodi&codi=${encodeURIComponent(codi)}`).then(r => r.json());
+            if (res.ok && res.escola) {
+                return {
+                    codi: codi,
+                    escola: res.escola,
+                    curs: res.curs || "",
+                    durada: Number(res.duradaMinuts) || 0,
+                    iniciat: res.iniciat ? new Date(res.iniciat).getTime() : null
+                };
+            }
+        } catch (err) {
+            // si falla la comprovació, el codi es tracta com a no trobat
+        }
+        return null;
+    }
+
     // ================================================================
-    // GESTIÓ DEL FILTRE PER ESCOLA (es desa a la URL, per poder-la guardar com a preferida)
+    // GESTIÓ DEL FILTRE (es desa a la URL, per poder-la guardar com a preferida)
     // ================================================================
     async function carregarAra() {
         const valor = inputEscola.value.trim();
         const nova = new URL(location.href);
-
-        if (!valor) {
-            escolaFiltreActual = "";
-            codiActual = "";
-            sessioDurada = 0;
-            sessioIniciat = null;
-            bannerCodi.classList.add('hidden');
-            renderComptador();
-            nova.searchParams.delete('escola');
-            nova.searchParams.delete('codi');
-            history.replaceState(null, '', nova);
-            actualitza();
-            return;
-        }
-
-        // Primer provem si el que s'ha escrit és un codi de sessió (el que
-        // genera la pàgina Docents); si ho és, en resolem l'escola i mostrem
-        // el banner gran perquè l'alumnat el pugui llegir i copiar.
-        try {
-            const res = await fetch(`${APPS_SCRIPT_URL}?action=validarCodi&codi=${encodeURIComponent(valor)}`).then(r => r.json());
-            if (res.ok && res.escola) {
-                escolaFiltreActual = res.escola;
-                codiActual = valor.toUpperCase();
-                sessioDurada = Number(res.duradaMinuts) || 0;
-                sessioIniciat = res.iniciat ? new Date(res.iniciat).getTime() : null;
-                document.getElementById('banner-codi-valor').textContent = valor.toUpperCase();
-                bannerCodi.classList.remove('hidden');
-                renderComptador();
-                nova.searchParams.set('codi', valor.toUpperCase());
-                nova.searchParams.delete('escola');
-                history.replaceState(null, '', nova);
-                actualitza();
-                return;
-            }
-        } catch (err) {
-            // si falla la comprovació del codi, ho provem com a nom d'escola més avall
-        }
-
-        // No és un codi vàlid: ho tractem com el nom (literal) de l'escola,
-        // igual que fins ara.
-        escolaFiltreActual = valor;
-        codiActual = "";
-        sessioDurada = 0;
-        sessioIniciat = null;
-        bannerCodi.classList.add('hidden');
-        renderComptador();
-        nova.searchParams.set('escola', valor);
+        nova.searchParams.delete('escola');
         nova.searchParams.delete('codi');
+        sessions = [];
+        escolaFiltreActual = "";
+        avisCodis.classList.add('hidden');
+
+        if (valor) {
+            // Si tot el que s'ha escrit té forma de codi(s) de sessió (4 caràcters
+            // cada un, separats per comes o espais), els resolem. Si algun no té
+            // aquesta forma, ho tractem com el nom literal de l'escola.
+            const tokens = separaCodis(valor);
+            if (tokens.every(t => FORMAT_CODI.test(t))) {
+                const codis = Array.from(new Set(tokens.map(t => t.toUpperCase())));
+                const resultats = await Promise.all(codis.map(consultarCodi));
+                sessions = resultats.filter(Boolean);
+                const noTrobats = codis.filter(c => !sessions.some(s => s.codi === c));
+                if (sessions.length && noTrobats.length) {
+                    avisCodis.textContent = `Codi no trobat: ${noTrobats.join(', ')}`;
+                    avisCodis.classList.remove('hidden');
+                }
+            }
+            if (sessions.length) {
+                nova.searchParams.set('codi', sessions.map(s => s.codi).join(','));
+            } else {
+                escolaFiltreActual = valor;
+                nova.searchParams.set('escola', valor);
+            }
+        }
         history.replaceState(null, '', nova);
+        construirBlocs();
         actualitza();
     }
 
-    // ================================================================
-    // COMPTE ENRERE DE LA DURADA PREVISTA (opcional)
-    // ================================================================
-    // Torna a consultar validarCodi (només quan hi ha un codi actiu i una
-    // durada configurada) per detectar el moment en què "iniciat" passa de
-    // buit a tenir data, és a dir, quan el primer grup arriba al Repte 1.
-    async function refrescarComptador() {
-        if (!codiActual) return;
-        try {
-            const res = await fetch(`${APPS_SCRIPT_URL}?action=validarCodi&codi=${encodeURIComponent(codiActual)}`).then(r => r.json());
-            if (res.ok) {
-                sessioDurada = Number(res.duradaMinuts) || 0;
-                sessioIniciat = res.iniciat ? new Date(res.iniciat).getTime() : null;
+    // Crea un bloc per sessió (banner del codi + curs, compte enrere i graella
+    // de targetes). Si el filtre és el nom d'una escola, un sol bloc sense banners.
+    function construirBlocs() {
+        contenidor.innerHTML = "";
+        const llista = sessions.length ? sessions : (escolaFiltreActual ? [{ codi: "" }] : []);
+        llista.forEach(sessio => {
+            const bloc = document.createElement('section');
+            bloc.className = 'bloc-sessio';
+            if (sessio.codi) {
+                const banner = document.createElement('div');
+                banner.className = 'banner-codi';
+                banner.appendChild(document.createTextNode('Codi de sessió:'));
+                const valor = document.createElement('span');
+                valor.textContent = sessio.codi;
+                banner.appendChild(valor);
+                if (sessio.curs) {
+                    const curs = document.createElement('small');
+                    curs.textContent = sessio.curs;
+                    banner.appendChild(curs);
+                }
+                bloc.appendChild(banner);
+                const durada = document.createElement('div');
+                durada.className = 'banner-durada hidden';
+                durada.dataset.codi = sessio.codi;
+                bloc.appendChild(durada);
             }
-        } catch (err) {
-            // si falla, deixem el que ja sabíem i ho reintentem al proper cicle
-        }
-    }
-
-    // Pinta el banner del compte enrere a partir del que ja sabem en
-    // memòria (sessioDurada/sessioIniciat); no fa cap petició de xarxa,
-    // perquè es crida cada segon per refrescar el rellotge.
-    function renderComptador() {
-        const banner = document.getElementById('banner-durada');
-        if (!sessioDurada) {
-            banner.classList.add('hidden');
-            return;
-        }
-        banner.classList.remove('hidden');
-        if (!sessioIniciat) {
-            banner.classList.remove('esgotat');
-            banner.textContent = "El compte enrere començarà quan el primer grup comenci el Repte 1.";
-            return;
-        }
-        const restantMs = sessioIniciat + sessioDurada * 60000 - Date.now();
-        const esgotat = restantMs <= 0;
-        const totalSeg = Math.max(0, Math.round(restantMs / 1000));
-        const h = Math.floor(totalSeg / 3600);
-        const m = Math.floor((totalSeg % 3600) / 60);
-        const s = totalSeg % 60;
-        const text = (h > 0 ? String(h).padStart(2, '0') + ':' : '') + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-        banner.classList.toggle('esgotat', esgotat);
-        banner.innerHTML = (esgotat ? "Temps esgotat: " : "Temps restant: ") + `<span class="valor">${text}</span>`;
+            const graella = document.createElement('div');
+            graella.className = 'graella';
+            graella.dataset.codi = sessio.codi;
+            bloc.appendChild(graella);
+            const buit = document.createElement('p');
+            buit.className = 'buit hidden';
+            bloc.appendChild(buit);
+            contenidor.appendChild(bloc);
+        });
+        renderComptador();
     }
 
     // ================================================================
-    // FUNCIÓ PRINCIPAL: demana l'estat de tots els grups al backend,
-    // filtra pels d'aquesta escola i pinta una targeta per cada un
+    // COMPTE ENRERE DE LA DURADA PREVISTA (opcional, un per codi)
+    // ================================================================
+    // Torna a consultar validarCodi de cada codi per detectar el moment en què
+    // "iniciat" passa de buit a tenir data, és a dir, quan el primer grup
+    // d'aquella sessió arriba al Repte 1.
+    async function refrescarComptador() {
+        if (!sessions.length) return;
+        const actuals = await Promise.all(sessions.map(s => consultarCodi(s.codi)));
+        actuals.forEach(r => {
+            if (!r) return; // si falla, deixem el que ja sabíem i ho reintentem al proper cicle
+            const s = sessions.find(x => x.codi === r.codi);
+            if (s) { s.durada = r.durada; s.iniciat = r.iniciat; }
+        });
+    }
+
+    // Pinta el banner del compte enrere de cada sessió a partir del que ja
+    // sabem en memòria; no fa cap petició de xarxa, perquè es crida cada
+    // segon per refrescar el rellotge.
+    function renderComptador() {
+        contenidor.querySelectorAll('.banner-durada').forEach(banner => {
+            const s = sessions.find(x => x.codi === banner.dataset.codi);
+            if (!s || !s.durada) {
+                banner.classList.add('hidden');
+                return;
+            }
+            banner.classList.remove('hidden');
+            if (!s.iniciat) {
+                banner.classList.remove('esgotat');
+                banner.textContent = "El compte enrere començarà quan el primer grup comenci el Repte 1.";
+                return;
+            }
+            const restantMs = s.iniciat + s.durada * 60000 - Date.now();
+            const esgotat = restantMs <= 0;
+            const totalSeg = Math.max(0, Math.round(restantMs / 1000));
+            const h = Math.floor(totalSeg / 3600);
+            const m = Math.floor((totalSeg % 3600) / 60);
+            const seg = totalSeg % 60;
+            const text = (h > 0 ? String(h).padStart(2, '0') + ':' : '') + String(m).padStart(2, '0') + ':' + String(seg).padStart(2, '0');
+            banner.classList.toggle('esgotat', esgotat);
+            banner.innerHTML = (esgotat ? "Temps esgotat: " : "Temps restant: ") + `<span class="valor">${text}</span>`;
+        });
+    }
+
+    // El Sheet a vegades interpreta "mm:ss" com una hora real i el fa malbé
+    // (surt com "1899-12-30T...Z"). Si no sembla un "mm:ss" vàlid, no el mostrem.
+    function formatTemps(valor) {
+        if (typeof valor === 'string' && /^\d{1,3}:\d{2}$/.test(valor)) return valor;
+        return '';
+    }
+
+    // Construeix la targeta d'un grup (nom, barra de progrés i estat).
+    function crearTargeta(g) {
+        const total = g.totalReptes || 5;
+        const actual = g.retoActual || 0;
+        const pct = Math.max(0, Math.min(100, Math.round((actual / total) * 100)));
+        const acabat = g.estat === 'Acabat';
+        const interromput = g.estat === 'Interromput';
+
+        const targeta = document.createElement('div');
+        targeta.className = 'targeta' + ((acabat || interromput) ? ' acabat' : '');
+
+        const header = document.createElement('div');
+        header.className = 'targeta-header';
+
+        if (g.numGrup) {
+            const badge = document.createElement('span');
+            badge.className = 'num-badge';
+            badge.setAttribute('aria-hidden', 'true'); // el número ja surt en text a l'h3
+            badge.textContent = g.numGrup;
+            header.appendChild(badge);
+        }
+
+        const h3 = document.createElement('h3');
+        h3.textContent = (g.numGrup ? `Grup ${g.numGrup} — ` : '') + g.grup;
+        header.appendChild(h3);
+
+        targeta.appendChild(header);
+
+        const barraFons = document.createElement('div');
+        barraFons.className = 'barra-fons';
+        const barra = document.createElement('div');
+        barra.className = 'barra';
+        barra.style.width = pct + '%';
+        barraFons.appendChild(barra);
+        targeta.appendChild(barraFons);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const spanReptes = document.createElement('span');
+        spanReptes.textContent = acabat ? 'Acabat 🏆'
+            : interromput ? `Aturat al repte ${actual} de ${total}`
+            : `Repte ${actual} de ${total}`;
+        if (acabat || interromput) spanReptes.className = 'estat-final';
+        const spanTemps = document.createElement('span');
+        spanTemps.textContent = formatTemps(g.tempsTotal);
+        meta.appendChild(spanReptes);
+        meta.appendChild(spanTemps);
+        targeta.appendChild(meta);
+
+        return targeta;
+    }
+
+    // ================================================================
+    // FUNCIÓ PRINCIPAL: demana l'estat de tots els grups al backend, els
+    // reparteix entre els blocs (un per codi de sessió, o un per escola) i
+    // pinta una targeta per cada grup
     // ================================================================
     async function actualitza() {
         const escolaFiltre = escolaFiltreActual.trim().toLowerCase();
-        const graella = document.getElementById('graella');
-        const missatgeBuit = document.getElementById('missatge-buit');
 
-        if (!escolaFiltre) {
-            graella.innerHTML = "";
+        if (!sessions.length && !escolaFiltre) {
+            contenidor.innerHTML = "";
             missatgeBuit.textContent = "Escriu el codi de sessió (o el nom de l'escola) i prem \"Mostrar\".";
             missatgeBuit.classList.remove('hidden');
             return;
         }
+        missatgeBuit.classList.add('hidden');
 
         let dades;
         try {
@@ -244,86 +342,32 @@
         if (!dades.ok) return;
 
         const araMs = Date.now();
-        const grups = dades.grups.filter(g => {
-            if (codiActual) {
-                // Filtre per codi de sessió exacte: distingeix sessions
-                // diferents encara que siguin de la mateixa escola.
-                if ((g.codi || '').trim().toUpperCase() !== codiActual) return false;
-            } else if ((g.escola || '').trim().toLowerCase() !== escolaFiltre) {
-                return false;
-            }
+        const recents = dades.grups.filter(g => {
             const actMs = new Date(g.actualitzat).getTime();
             if (isNaN(actMs)) return true;
             return (araMs - actMs) < HORES_CADUCITAT * 3600 * 1000;
         });
 
-        grups.sort((a, b) => (b.retoActual || 0) - (a.retoActual || 0));
+        contenidor.querySelectorAll('.graella').forEach(graella => {
+            const codi = graella.dataset.codi;
+            const grups = recents.filter(g => codi
+                // Filtre per codi de sessió exacte: distingeix sessions
+                // diferents encara que siguin de la mateixa escola.
+                ? (g.codi || '').trim().toUpperCase() === codi
+                : (g.escola || '').trim().toLowerCase() === escolaFiltre);
+            grups.sort((a, b) => (b.retoActual || 0) - (a.retoActual || 0));
 
-        graella.innerHTML = "";
-
-        if (grups.length === 0) {
-            missatgeBuit.textContent = "Encara no hi ha cap grup jugant d'aquesta escola.";
-            missatgeBuit.classList.remove('hidden');
-            return;
-        }
-        missatgeBuit.classList.add('hidden');
-
-        // El Sheet a vegades interpreta "mm:ss" com una hora real i el fa malbé
-        // (surt com "1899-12-30T...Z"). Si no sembla un "mm:ss" vàlid, no el mostrem.
-        function formatTemps(valor) {
-            if (typeof valor === 'string' && /^\d{1,3}:\d{2}$/.test(valor)) return valor;
-            return '';
-        }
-
-        grups.forEach(g => {
-            const total = g.totalReptes || 5;
-            const actual = g.retoActual || 0;
-            const pct = Math.max(0, Math.min(100, Math.round((actual / total) * 100)));
-            const acabat = g.estat === 'Acabat';
-            const interromput = g.estat === 'Interromput';
-
-            const targeta = document.createElement('div');
-            targeta.className = 'targeta' + ((acabat || interromput) ? ' acabat' : '');
-
-            const header = document.createElement('div');
-            header.className = 'targeta-header';
-
-            if (g.numGrup) {
-                const badge = document.createElement('span');
-                badge.className = 'num-badge';
-                badge.setAttribute('aria-hidden', 'true'); // el número ja surt en text a l'h3
-                badge.textContent = g.numGrup;
-                header.appendChild(badge);
+            graella.innerHTML = "";
+            const buit = graella.nextElementSibling;
+            if (grups.length === 0) {
+                buit.textContent = codi
+                    ? "Encara no hi ha cap grup jugant amb aquest codi."
+                    : "Encara no hi ha cap grup jugant d'aquesta escola.";
+                buit.classList.remove('hidden');
+                return;
             }
-
-            const h3 = document.createElement('h3');
-            h3.textContent = (g.numGrup ? `Grup ${g.numGrup} — ` : '') + g.grup;
-            header.appendChild(h3);
-
-            targeta.appendChild(header);
-
-            const barraFons = document.createElement('div');
-            barraFons.className = 'barra-fons';
-            const barra = document.createElement('div');
-            barra.className = 'barra';
-            barra.style.width = pct + '%';
-            barraFons.appendChild(barra);
-            targeta.appendChild(barraFons);
-
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            const spanReptes = document.createElement('span');
-            spanReptes.textContent = acabat ? 'Acabat 🏆'
-                : interromput ? `Aturat al repte ${actual} de ${total}`
-                : `Repte ${actual} de ${total}`;
-            if (acabat || interromput) spanReptes.className = 'estat-final';
-            const spanTemps = document.createElement('span');
-            spanTemps.textContent = formatTemps(g.tempsTotal);
-            meta.appendChild(spanReptes);
-            meta.appendChild(spanTemps);
-            targeta.appendChild(meta);
-
-            graella.appendChild(targeta);
+            buit.classList.add('hidden');
+            grups.forEach(g => graella.appendChild(crearTargeta(g)));
         });
     }
 
